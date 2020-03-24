@@ -129,7 +129,7 @@ class BanditReproduction(DefaultReproduction):
             for mutations, deltas in mutations_deltas.items():
                 self.bandit.update(mutations, len(deltas), deltas)
             
-            print([(g.key, g.fitness-f, m) for g,f,m in self.records[-1]])
+            # print([(g.key, g.fitness-f, m) for g,f,m in self.records[-1]])
         
         self.bandit.report()
 
