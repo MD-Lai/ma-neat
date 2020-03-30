@@ -3,6 +3,7 @@ import random
 import sys
 
 from numpy.random import beta
+from math import log
 
 def print_warning(*args, **kwargs):
     print(*args, file=sys.stderr, **kwargs)
@@ -105,8 +106,8 @@ class EpsMutatorBandit(AbstractBandit): # Epsilon Greedy Bandit
                 self.plays.append(0)
 
         else:
-            self.arms = [0 for _ in range(6)]
-            self.plays = [0 for _ in range(6)]
+            self.arms = [0] * 6
+            self.plays = [0] * 6
 
     def play(self, round):
         
@@ -158,9 +159,8 @@ class MPTSMutatorBandit(AbstractBandit): # Multi-play Thompson Sampling Bandit
                 self.plays.append(0)
 
         else:
-            for _ in range(6):
-                self.arms.append((0,0))
-                self.plays.append(0)
+            self.arms = [(0,0)] * 6
+            self.plays = [0] * 6
 
     def play(self, round):
         n = random.choice(self.n)
@@ -178,11 +178,18 @@ class MPTSMutatorBandit(AbstractBandit): # Multi-play Thompson Sampling Bandit
         
         s,f = self.arms[arm]
 
-        score = max(rewards)
-        if score > 0:
-            s += score
+        max_score = max(rewards)
+        min_score = min(rewards)
+
+        if max_score < 0 :
+            f -= min_score # if max is <0, min has to be <0 too
+        elif min_score > 0:
+            s += max_score # likewise if min >0, max has to be >0
         else:
-            f -= score
+            if abs(max_score) > abs(min_score):
+                s += max_score
+            elif abs(min_score) > abs(max_score):
+                f -= min_score
 
         self.arms[arm] = (s,f)
         self.plays[arm] += plays
@@ -193,16 +200,33 @@ class MPTSMutatorBandit(AbstractBandit): # Multi-play Thompson Sampling Bandit
 
 class UCBMutatorBandit(AbstractBandit):
     def __init__(self, params):
-        pass
+        
+        # TODO implement optional parameters later
+        self.arms = [0] * 6
+        self.plays = [0] * 6 # init to 1 
 
     def play(self, round):
-        pass
+        
+        ratings = [self.arms[i] + (2 * log(round) / self.plays[i])**0.5 if self.plays[i] > 0 else 0 for i in range(len(self.arms))]
 
-    def update(self, arm, plays, reward):
-        pass
+        best = max(ratings)
+        plays = []
+
+        for i in range(len(self.arms)):
+            if self.arms[i] >= best:
+                plays.append(i)
+
+        random.shuffle(plays)
+
+        return [plays[0]]
+
+    def update(self, arm, plays, rewards):
+        self.arms[arm] += max(rewards)
+        self.plays[arm] += plays
 
     def report(self):
-        pass
+        for i in range(len(self.arms)):
+            print("{}: reward:{}, plays:{}".format(i, self.arms[i], self.plays[i]))
 
 """ Beta Implementation
 class EpsMutatorBandit(AbstractBandit): # Epsilon greedy 

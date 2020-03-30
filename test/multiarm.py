@@ -5,6 +5,7 @@ import bandit
 import math
 from random import random, choice
 from itertools import count
+from statistics import median
 
 from neat.config import ConfigParameter, DefaultClassConfig
 from neat.math_util import mean
@@ -122,8 +123,19 @@ class BanditReproduction(DefaultReproduction):
         # 1 if best arm in generation else 0?
         mutations_deltas = {}
         if generation > 1:
+            # normalise scores: get mean and standard deviation
+            all_deltas = [mutant.fitness - old_fitness for (mutant, old_fitness, _) in self.records[-1]]
+            
+            mean_delta = sum(all_deltas) / len(all_deltas)
+            dev_delta  = (sum([(d-mean_delta)**2 for d in all_deltas]) / len(all_deltas))**0.5
+
             for mutant, old_fitness, mutations in self.records[-1]:
                 fit_delta = mutant.fitness - old_fitness
+                
+                # subtract mean, divide by standard deviation
+                fit_delta = (fit_delta - mean_delta) / dev_delta
+                # clamp to -2, 2
+                # fit_delta = max(min(fit_delta, 2), -2)
 
                 for m in mutations:
                     if m not in mutations_deltas:
@@ -133,7 +145,7 @@ class BanditReproduction(DefaultReproduction):
 
             for mutations, deltas in mutations_deltas.items():
                 self.bandit.update(mutations, len(deltas), deltas)
-            
+                # print(mutations, deltas)
             # print([(g.key, g.fitness-f, m) for g,f,m in self.records[-1]])
         
         self.bandit.report()
