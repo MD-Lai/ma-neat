@@ -82,4 +82,3 @@ species_elitism      = 2
 [BanditReproduction]
 elitism            = 2
 survival_threshold = 0.2
-crossover_rate     = 0.1

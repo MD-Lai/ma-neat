@@ -15,31 +15,142 @@ def print_warning(*args, **kwargs):
 
 # TODO self.plays parameter in update is not required, len(rewards) does the same thing
 
-class AbstractBandit(ABC):
+class AbstractMutator(ABC):
 
+    """
+    Abstract class for bandit: 
+    Requirements: 
+        _post_init(self) # can include extra args if needed
+        rate_plays(self, t): return [(play, rating)]
+        update(self, arm, rewards)
+
+    Optional:
+        render_arm(self, i): return string_representing_arm
+    """
+    
+    def __init__(self, *args, **kwargs):
+        # records highest and lowest values seen
+        self.best  = (-float("inf"), -1)
+        self.worst = (float("inf"),  -1)
+
+        # Initialise arms separately, since all arms have a slightly different representations
+        self.arms = []  # these are only included so render_arm and report stop complaining
+        self.plays = []
+
+        self._post_init(*args, **kwargs)
+    
     @abstractmethod
-    def __init__(self):
-        # Initialise arms with optional parameters, defined as optional values in function signature
+    def _post_init(self):
         pass
 
     @abstractmethod
-    def play(self, round):
-        # Play a round with a given context
-        # Returns list of arms
-        # Advise shuffling the plays before returning, don't want to bias adding then deleting nodes for instance
+    def rate_plays(self, t):
+        # return ranking of arms as [(play,rating)] tuples
+        # done to support multi-arm plays as a rating rather than a choice of plays
         pass
 
+    def play(self, t):
+
+        play_ratings = self.rate_plays(t)
+
+        _,highest = max(play_ratings, key=lambda x: x[1])
+        
+        plays = [p for p,r in play_ratings if r >= highest]
+
+        return random.choice(plays)
+
     @abstractmethod
-    def update(self, arm, plays, rewards):
+    def update(self, arm, rewards):
         # Update arm by arm with a given reward and adjustable play amount
         # If multiple arms are played, adjust each arm's reward and plays externally (i.e. in reproduction)
         pass
+    
+    def render_arm(self, i):
+        # return report of arm i as a string
+        return "arm:{}, plays{}".format(self.arms[i], self.plays[i])
 
-    @abstractmethod
     def report(self):
-        # Return a report about itself
+
+        report = ""
+        for i in range(len(self.arms)):
+            report += "{}: {}\n".format(i, self.render_arm(i))
+
+        report += "\nBest: {}, Worst: {}\n".format(self.best, self.worst)
+
+        return report
+
+
+class RSMutator(AbstractMutator):
+    def _post_init(self, rates=[]):
         pass
 
+    def rate_plays(self, t):
+        return []
+    
+    def update(self, arm, rewards):
+        pass
+
+    def render_arm(self, i, arm):
+        return ""
+
+class EpsMutator(AbstractMutator):
+    def _post_init(self, epsilon=0.1, a_0=None, p_0=None):
+
+        self.arms  = [0] * 6 if a_0 is None else a_0
+        self.plays = [0] * 6 if p_0 is None else p_0
+        self.eps = epsilon
+
+    def rate_plays(self, t):
+        if random.random() < self.eps:
+            return [([random.randint(0, len(self.arms)-1)], 1)]
+        else:
+            return [([a], s) for a,s in enumerate(self.arms)]
+    
+    def update(self, arm, rewards):
+        # since we're trying to be as greedy as possible, just save the highest rewarded arm
+        r = max(rewards)
+
+        r_b, _ = self.best
+        r_w, _ = self.worst
+
+        self.best = (r, arm) if r > r_b else self.best
+        self.worst = (r, arm) if r < r_w else self.worst
+
+        self.arms[arm] += r
+        self.plays[arm] += len(rewards)
+        
+
+    def render_arm(self, i):
+        return "score:{}, plays:{}".format(self.arms[i], self.plays[i])
+
+class UCBMutator(AbstractMutator):
+    def _post_init(self):
+        pass
+
+    def rate_plays(self, t):
+        return []
+    
+    def update(self, arm, rewards):
+        pass
+
+    def render_arm(self, i, arm):
+        return ""
+
+class TSMutator(AbstractMutator):
+    def _post_init(self):
+        pass
+
+    def rate_plays(self, t):
+        return []
+    
+    def update(self, arm, rewards):
+        pass
+
+    def render_arm(self, i, arm):
+        return ""
+
+
+"""
 class RSMutatorBandit(AbstractBandit): # Random Sampler Bandit, to observe default behaviour
 
     # Parameters: single_mutation=bool; mutation_probabiities=[float], be sure to include rate for each arm
@@ -233,6 +344,7 @@ class UCBMutatorBandit(AbstractBandit):
     def report(self):
         for i in range(len(self.arms)):
             print("{}: reward:{}, plays:{}".format(i, self.arms[i], self.plays[i]))
+"""
 
 """ Beta Implementation
 class EpsMutatorBandit(AbstractBandit): # Epsilon greedy 

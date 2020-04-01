@@ -1,6 +1,6 @@
 from neat import DefaultGenome, DefaultReproduction
 from neat.genome import DefaultGenomeConfig
-import bandit
+import bandit2
 
 import math
 from random import random, choice
@@ -20,8 +20,7 @@ class BanditReproduction(DefaultReproduction):
         return DefaultClassConfig(param_dict,
                                   [ConfigParameter('elitism', int, 0),
                                    ConfigParameter('survival_threshold', float, 0.2),
-                                   ConfigParameter('min_species_size', int, 2),
-                                   ConfigParameter('crossover_rate', float, 0.2)])
+                                   ConfigParameter('min_species_size', int, 2)])
 
     def __init__(self, config, reporters, stagnation):
         # pylint: disable=super-init-not-called
@@ -38,11 +37,12 @@ class BanditReproduction(DefaultReproduction):
         #                                                         ,0.8 # conn_mutate_prob
         #                                                         ]})
 
-        # self.bandit = bandit.EpsMutatorBandit({"epsilon": 0.2})
+        self.bandit = bandit2.EpsMutator(epsilon=0.2)
 
-        self.bandit = bandit.MPTSMutatorBandit({"n_plays": [1]})
+        # self.bandit = bandit.MPTSMutatorBandit({"n_plays": [1]})
         self.records = [] # list of {id: (parent_fitness, mutation_directives)} per generation
         # self.ancestors = {} # exists in super class
+        self.normalising = False
 
     # Seems like the right point to initiate a bandit, at the reproduction level
     # as the genome level is applied individually
@@ -124,6 +124,7 @@ class BanditReproduction(DefaultReproduction):
         mutations_deltas = {}
         if generation > 1:
             # normalise scores: get mean and standard deviation
+            # FIXME doesn't account for scale of delta, maybe that's fine since it encapsulates changes in reward delta in a more dramatic way
             all_deltas = [mutant.fitness - old_fitness for (mutant, old_fitness, _) in self.records[-1]]
             
             mean_delta = sum(all_deltas) / len(all_deltas)
@@ -133,7 +134,8 @@ class BanditReproduction(DefaultReproduction):
                 fit_delta = mutant.fitness - old_fitness
                 
                 # subtract mean, divide by standard deviation
-                fit_delta = (fit_delta - mean_delta) / dev_delta
+                if self.normalising:
+                    fit_delta = (fit_delta - mean_delta) / dev_delta
                 # clamp to -2, 2
                 # fit_delta = max(min(fit_delta, 2), -2)
 
@@ -144,11 +146,11 @@ class BanditReproduction(DefaultReproduction):
                         mutations_deltas[m].append(fit_delta)
 
             for mutations, deltas in mutations_deltas.items():
-                self.bandit.update(mutations, len(deltas), deltas)
+                self.bandit.update(mutations, deltas) # len deltas can be removed, the number of rewards is the number of plays
                 # print(mutations, deltas)
             # print([(g.key, g.fitness-f, m) for g,f,m in self.records[-1]])
         
-        self.bandit.report()
+        print(self.bandit.report())
 
 
         self.records.append([])
@@ -187,12 +189,10 @@ class BanditReproduction(DefaultReproduction):
 
             # Randomly choose parents and produce the number of offspring allotted to the species.
             while spawn > 0:
-                spawn -= 1 
-                
-                crossover = random() < self.reproduction_config.crossover_rate
+                spawn -= 1
 
                 parent1_id, parent1 = choice(old_members)
-                parent2_id, parent2 = (parent1_id, parent1) if not crossover else choice(old_members)
+                parent2_id, parent2 = (parent1_id, parent1)
 
                 gid = next(self.genome_indexer)
                 child = config.genome_type(gid)
@@ -205,8 +205,7 @@ class BanditReproduction(DefaultReproduction):
                 new_population[gid] = child
                 self.ancestors[gid] = (parent1_id, parent2_id) 
 
-                if not crossover:
-                    self.records[-1].append((child, parent1.fitness, mutation_directives))
+                self.records[-1].append((child, parent1.fitness, mutation_directives))
 
         return new_population
 

@@ -10,6 +10,13 @@ import multiarm
 from random import random
 import gym
 
+from tqdm import tqdm # The progress bar
+
+# e.g. use of tqdm, wrap whatever iterable in tqdm. 
+# Most relevant parameters is desc, to prefix a descriptor to the progress bar
+# for i in tqdm(range(500), desc="Test 1: "):
+#     pass # do stuff
+
 # 2-input XOR inputs and expected outputs.
 xor_inputs = [(0.0, 0.0), (0.0, 1.0), (1.0, 0.0), (1.0, 1.0)]
 xor_outputs = [   (0.0,),     (1.0,),     (1.0,),     (0.0,)]
