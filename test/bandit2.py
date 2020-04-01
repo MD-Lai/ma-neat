@@ -59,10 +59,21 @@ class AbstractMutator(ABC):
 
         return random.choice(plays)
 
+    def update(self, arm, rewards): 
+        # just skimming some general information before asking telling arms to update
+        r = max(rewards)
+
+        r_b, _ = self.best
+        r_w, _ = self.worst
+
+        self.best = (r, arm) if r > r_b else self.best
+        self.worst = (r, arm) if r < r_w else self.worst
+        
+        self.arm_update(arm, rewards)
+
     @abstractmethod
-    def update(self, arm, rewards):
-        # Update arm by arm with a given reward and adjustable play amount
-        # If multiple arms are played, adjust each arm's reward and plays externally (i.e. in reproduction)
+    def arm_update(self, arm, rewards):
+        # Update arm with observed rewards
         pass
     
     def render_arm(self, i):
@@ -87,7 +98,7 @@ class RSMutator(AbstractMutator):
     def rate_plays(self, t):
         return []
     
-    def update(self, arm, rewards):
+    def arm_update(self, arm, rewards):
         pass
 
     def render_arm(self, i, arm):
@@ -106,20 +117,11 @@ class EpsMutator(AbstractMutator):
         else:
             return [([a], s) for a,s in enumerate(self.arms)]
     
-    def update(self, arm, rewards):
+    def arm_update(self, arm, rewards):
         # since we're trying to be as greedy as possible, just save the highest rewarded arm
-        r = max(rewards)
-
-        r_b, _ = self.best
-        r_w, _ = self.worst
-
-        self.best = (r, arm) if r > r_b else self.best
-        self.worst = (r, arm) if r < r_w else self.worst
-
-        self.arms[arm] += r
+        self.arms[arm] += max(rewards)
         self.plays[arm] += len(rewards)
         
-
     def render_arm(self, i):
         return "score:{}, plays:{}".format(self.arms[i], self.plays[i])
 
@@ -130,7 +132,7 @@ class UCBMutator(AbstractMutator):
     def rate_plays(self, t):
         return []
     
-    def update(self, arm, rewards):
+    def arm_update(self, arm, rewards):
         pass
 
     def render_arm(self, i, arm):
@@ -143,7 +145,7 @@ class TSMutator(AbstractMutator):
     def rate_plays(self, t):
         return []
     
-    def update(self, arm, rewards):
+    def arm_update(self, arm, rewards):
         pass
 
     def render_arm(self, i, arm):

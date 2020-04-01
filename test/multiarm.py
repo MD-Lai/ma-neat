@@ -37,7 +37,7 @@ class BanditReproduction(DefaultReproduction):
         #                                                         ,0.8 # conn_mutate_prob
         #                                                         ]})
 
-        self.bandit = bandit2.EpsMutator(epsilon=0.2)
+        self.bandit = bandit2.EpsMutator(epsilon=0.5)
 
         # self.bandit = bandit.MPTSMutatorBandit({"n_plays": [1]})
         self.records = [] # list of {id: (parent_fitness, mutation_directives)} per generation
