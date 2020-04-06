@@ -27,19 +27,12 @@ class BanditReproduction(DefaultReproduction):
         super().__init__(config, reporters, stagnation)
 
         # Change here to change bandit
-        
-        # self.bandit = bandit.RSMutatorBandit({"single_mutation": True, 
-        #                                       "mutation_rates": [0.02 # node_add_prob
-        #                                                         ,0.02 # node_del_prob
-        #                                                         ,0.4 # node_mutate_prob
-        #                                                         ,0.5 # conn_add_prob
-        #                                                         ,0.5 # conn_del_prob
-        #                                                         ,0.8 # conn_mutate_prob
-        #                                                         ]})
 
-        self.bandit = bandit2.EpsMutator(epsilon=0.5)
+        self.bandit = bandit2.RandomMutator(rates=[0.2, 0.1, 0.8, 0.5, 0.2, 0.9])
 
-        # self.bandit = bandit.MPTSMutatorBandit({"n_plays": [1]})
+        # self.bandit = bandit2.EpsMutator(epsilon=0.5)
+
+        # self.bandit = bandit2.TSMutator(n_plays=[1,2,3])
         self.records = [] # list of {id: (parent_fitness, mutation_directives)} per generation
         # self.ancestors = {} # exists in super class
         self.normalising = False
@@ -122,7 +115,7 @@ class BanditReproduction(DefaultReproduction):
         # How to reward or perceive "failure"? Same as fraction but for decreases? 
         # 1 if best arm in generation else 0?
         mutations_deltas = {}
-        if generation > 1:
+        if generation > 0:
             # normalise scores: get mean and standard deviation
             # FIXME doesn't account for scale of delta, maybe that's fine since it encapsulates changes in reward delta in a more dramatic way
             all_deltas = [mutant.fitness - old_fitness for (mutant, old_fitness, _) in self.records[-1]]
@@ -150,7 +143,7 @@ class BanditReproduction(DefaultReproduction):
                 # print(mutations, deltas)
             # print([(g.key, g.fitness-f, m) for g,f,m in self.records[-1]])
         
-        print(self.bandit.report())
+            print(self.bandit.report())
 
 
         self.records.append([])

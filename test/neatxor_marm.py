@@ -37,6 +37,9 @@ def eval_genomes(genomes, config):
             observation, reward, done, info = env.step([action])
             genome.fitness += reward
 
+            if done:
+                break
+
 
 # def eval_genomes(genomes, config):
 #     for genome_id, genome in genomes:
