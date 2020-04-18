@@ -1,0 +1,84 @@
+[NEAT]
+fitness_criterion      = 
+fitness_threshold      = 
+no_fitness_termination = 
+pop_size               = 
+reset_on_extinction    = 
+
+[DefaultStagnation]
+species_fitness_func = 
+max_stagnation       = 
+species_elitism      = 
+
+[DefaultReproduction]
+elitism            = 
+survival_threshold = 
+min_species_size   = 
+
+[DefaultSpeciesSet]
+# Genome compatibility options
+compatibility_threshold             = 
+
+[DefaultGenome]
+compatibility_disjoint_coefficient = 
+compatibility_weight_coefficient   = 
+
+# Structural mutate options
+conn_add_prob              = 
+conn_delete_prob           = 
+enabled_default            = 
+enabled_mutate_rate        = 
+enabled_rate_to_false_add  = 
+enabled_rate_to_true_add   = 
+node_add_prob              = 
+node_delete_prob           = 
+single_structural_mutation = 
+structural_mutation_surer  = 
+
+# Node aggregation options
+aggregation_options     = 
+aggregation_default     = 
+aggregation_mutate_rate = 
+
+# Node activation options
+activation_options     = 
+activation_default     = 
+activation_mutate_rate = 
+
+# Node bias options
+bias_init_type    = 
+bias_init_mean    = 
+bias_init_stdev   = 
+bias_max_value    = 
+bias_min_value    = 
+bias_mutate_power = 
+bias_mutate_rate  = 
+bias_replace_rate = 
+
+# Node response options
+response_init_type    = 
+response_init_mean    = 
+response_init_stdev   = 
+response_max_value    = 
+response_min_value    = 
+response_mutate_power = 
+response_mutate_rate  = 
+response_replace_rate = 
+
+# Connection weight options
+weight_init_type    = 
+weight_init_mean    = 
+weight_init_stdev   = 
+weight_max_value    = 
+weight_min_value    = 
+weight_mutate_power = 
+weight_mutate_rate  = 
+weight_replace_rate = 
+
+
+# Network intrinsic parameter options
+feed_forward       = 
+initial_connection = 
+num_hidden         = 
+num_inputs         = 
+num_outputs        = 

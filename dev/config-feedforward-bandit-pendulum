@@ -2,9 +2,9 @@
 
 [NEAT]
 fitness_criterion     = max
-fitness_threshold     = 1
-no_fitness_termination = True
-pop_size              = 200
+fitness_threshold     = 200
+no_fitness_termination = False
+pop_size              = 100
 reset_on_extinction   = False
 
 [BanditGenome]

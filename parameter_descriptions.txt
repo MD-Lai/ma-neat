@@ -1,0 +1,90 @@
+Parameters available are:
+Format:
+parameter_name : param (param with args) | default_exists_Y_N | value_if_default | description
+
+[NEAT]
+fitness_criterion      : min max mean | N | Function used to compute termination criterion from set of genome fitnesses
+fitness_threshold      : float        | N | Terminates when fitness achieved is at or above this value
+no_fitness_termination : True False   | Y | False | If True, ignores termination and runs to generation completion, 
+pop_size               : int          | N | Number of individuals per generations 
+reset_on_extinction    : True False   | N | If true, when all species die of stagnation, new population spawns, otherwise exception thrown
+
+[DefaultStagnation]
+species_fitness_func : max min mean median | Y | mean | Function to compute fitness of species from individuals 
+max_stagnation       : int                 | Y | 15   | n-generations for species to show improvement, before considered stagnant and removed
+species_elitism      : int                 | Y | 0    | Number of species protected from stagnation
+
+[DefaultReproduction]
+elitism            : int   | Y | 0   | Number of species preserved as-is between generations
+survival_threshold : float | Y | 0.2 | Fraction of individuals in a species allowed to reproduce each generation
+min_species_size   : int   | Y | 2   | Minimum number of genomes per species after reproduction
+
+[DefaultGenome]
+# Genome compatibility options
+compatibiity_threshold             : float | N | Maximum genomic distance to be considered in the same species
+compatability_disjoint_coefficient : float | N | Coefficient multiplier for contribution of each disjoint and excess gene to genomic distance 
+compatability_weight_coefficient   : float | N | Coefficient multiplier for contribution of each different weight, bias, and response to genomic distance
+
+# Structural mutate options
+conn_add_prob              : float              | N | Probability that mutation will add connection between existing nodes
+conn_delete_prob           : float              | N | Probability that mutation will delete existing connection
+enabled_default            : True False         | N | Default enabled status of newly created connections (i.e. they can be created and be immediately disabled if False)
+enabled_mutate_rate        : float              | N | Probability that mutation replaces 'enabled' status of connection (node first selected, then 50/50 chance of being set to enabled/disabled)
+enabled_rate_to_false_add  : float              | N | Additional probability to add to enabled_mutate_rate if connection currently enabled
+enabled_rate_to_true_add   : float              | N | Additional probability to add to enabled_mutate_rate if connection currently disabled
+node_add_prob              : float              | N | Probability for mutation to add a new node, replacing an existing connection (enabled status set to false)
+node_delete_prob           : float              | N | Probabiity that mutation deletes an existing node and all connections to/from it
+single_structural_mutation : True False         | Y | False | If True, only one structural mutation allowed per genome per generation (Also normalises conn_add/delete and node_add/delete probabilities)
+structural_mutation_surer  : True False default | Y | default | If True, attempting to add a node over non-existent connection adds connection instead. Also, if attempting to add an already existing connection, that connection will be set to enabled. 
+                                                                If set to default, then has the same value as single_structural_mutation
+
+# Node aggregation options
+aggregation_options     : sum product min max mean median 
+                                           | Y | sum     | List of aggregation functions available to nodes. Aggregation is basically how a node sees input
+aggregation_default     : one from options | Y | random  | Default aggregation to use when creating new nodes. Randomly selects from activation_option if random 
+aggregation_mutate_rate : float            | N | Probability for a mutation to replace a node's aggregation function with random one from aggregation_options
+
+# Node activation options
+activation_options     : abs clamped cube exp gauss hat identity inv log relu elu selu sigmoid sin softplus square tanh
+                                            | Y | sigmoid | List of functions available to nodes. Activation is basically how a node shapes its output
+activation_default     : one from options | Y | random  | Activation function to use when creating new nodes. Randomly selects from activation_option if random
+activation_mutate_rate : float            | N | Probability for a mutation to replace a node's activation function with random one from activation_options
+
+# Node bias options
+bias_init_type    : gaussian uniform | Y | gaussian | Distribution of initial bias values (check for details of math). Bias is how is how much a node adds to the processed input
+bias_init_mean    : float            | N | Mean of distribution used to draw response multiplier for initial bias values 
+bias_init_stdev   : float            | N | Standard deviation of distribution used to draw initial bias values
+bias_max_value    : float            | N | Maximum allowed bias value. Biases above are clamped 
+bias_min_value    : float            | N | Minimum allowed bias value. Biases below are clamped
+bias_mutate_power : float            | N | Standard deviation of distribution to draw bias mutation from
+bias_mutate_rate  : float            | N | Probability that mutation changes bias by adding a random value
+bias_replace_rate : float            | N | Probability that mutation replaces bias to a newly chosen value
+
+# Node response options
+response_init_type    : gaussian uniform | Y | gaussian | Distribution of initial response values. Response is basically how sensitive a node is to its inputs
+response_init_mean    : float            | N | Mean of distribution used to draw response multiplier for initial response values
+response_init_stdev   : float            | N | Standard deviation of distribution used to draw initial response values
+response_max_value    : float            | N | Maximum allowed response value. Responses above are clamped
+response_min_value    : float            | N | Mimimum allowed response value. Responses below are clamped
+response_mutate_power : float            | N | Standard deviation of distribution to draw response mutatation value
+response_mutate_rate  : float            | N | Probability that mutation changes response by adding a random value
+response_replace_rate : float            | N | Probability that mutation replaces response to a newly chosen value
+
+# Connection weight options
+weight_init_type    : gaussian uniform | Y | gaussian | Distribution of initial weight value. Weight is basically how strongly the downstream node sees the upstream node's output
+weight_init_mean    : float            | N | Mean of distribution used to draw response multiplier for initial weight values
+weight_init_stdev   : float            | N | Standard deviation of distribution used to draw initial weight values          
+weight_max_value    : float            | N | Maximum allowed weight value. Responses above are clamped
+weight_min_value    : float            | N | Mimimum allowed response value. Responses below are clamped
+weight_mutate_power : float            | N | Standard deviation of distribution to draw weight mutatation value
+weight_mutate_rate  : float            | N | Probability that mutation changes weight by adding a random value
+weight_replace_rate : float            | N | Probability that mutation replaces weight to a newly chosen value
+
+
+# Network intrinsic parameter options
+feed_forward       : True False | N | If set to True, generated networks aren't allowed to have recurrent connections, otherwise they may, but aren't forced to be, recurrent
+initial_connection : unconnected fs_neat_nohidden fs_neat_hidden full_nodirect full_direct (partial_nodirect float) (partial_direct float) 
+                                | N | Specifies initial connectivity of newly-created genomes
+num_hidden         : int        | N | Number of hidden nodes to add to each genome in initial population
+num_inputs         : int        | N | Number of input nodes (Must be same as size of data)
+num_outputs        : int        | N | Number of output nodes

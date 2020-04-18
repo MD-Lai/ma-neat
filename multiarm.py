@@ -1,16 +1,15 @@
 from neat import DefaultGenome, DefaultReproduction
 from neat.genome import DefaultGenomeConfig
-import bandit
 
 import math
 from random import random, choice
 from itertools import count
+from statistics import median
 
 from neat.config import ConfigParameter, DefaultClassConfig
 from neat.math_util import mean
 from neat.six_util import iteritems, itervalues
 from neat.genes import DefaultConnectionGene, DefaultNodeGene
-
 
 class BanditReproduction(DefaultReproduction):
 
@@ -19,29 +18,18 @@ class BanditReproduction(DefaultReproduction):
         return DefaultClassConfig(param_dict,
                                   [ConfigParameter('elitism', int, 0),
                                    ConfigParameter('survival_threshold', float, 0.2),
-                                   ConfigParameter('min_species_size', int, 2),
-                                   ConfigParameter('crossover_rate', float, 0.2)])
+                                   ConfigParameter('min_species_size', int, 2)])
+    def bandit_type(self, bandit):
+        # Take a bandit from external sources
+        self.bandit = bandit
 
     def __init__(self, config, reporters, stagnation):
         # pylint: disable=super-init-not-called
         super().__init__(config, reporters, stagnation)
 
-        # Change here to change bandit
-        
-        # self.bandit = bandit.RSMutatorBandit({"single_mutation": True, 
-        #                                       "mutation_rates": [0.02 # node_add_prob
-        #                                                         ,0.02 # node_del_prob
-        #                                                         ,0.4 # node_mutate_prob
-        #                                                         ,0.5 # conn_add_prob
-        #                                                         ,0.5 # conn_del_prob
-        #                                                         ,0.8 # conn_mutate_prob
-        #                                                         ]})
-
-        # self.bandit = bandit.EpsMutatorBandit({"epsilon": 0.2})
-
-        self.bandit = bandit.MPTSMutatorBandit({"n_plays": [1]})
         self.records = [] # list of {id: (parent_fitness, mutation_directives)} per generation
-        # self.ancestors = {} # exists in super class
+
+        self.normalising = False
 
     # Seems like the right point to initiate a bandit, at the reproduction level
     # as the genome level is applied individually
@@ -115,23 +103,32 @@ class BanditReproduction(DefaultReproduction):
 
 
         # Bandit Update
-        mutations_deltas = {}
-        if generation > 1:
+        # TODO Reconsider reward scheme to be invariant of actual fitness value
+        # Percentage improvement to fitness?
+        # Fitness improvement as a fraction of best improvement? - seems good, then one mutation is always 1, rest are < 1
+        # How to reward or perceive "failure"? Same as fraction but for decreases? 
+        # 1 if best arm in generation else 0?
+        if generation > 0:
+            mutation_delta = []
+
             for mutant, old_fitness, mutations in self.records[-1]:
                 fit_delta = mutant.fitness - old_fitness
-
+                
                 for m in mutations:
-                    if m not in mutations_deltas:
-                        mutations_deltas[m] = [fit_delta]
-                    else:
-                        mutations_deltas[m].append(fit_delta)
+                    mutation_delta.append((m, fit_delta))
+            # print(mutation_delta)
+            self.bandit.update_all(mutation_delta)
+            #         if m not in mutations_deltas:
+            #             mutations_deltas[m] = [fit_delta]
+            #         else:
+            #             mutations_deltas[m].append(fit_delta)
 
-            for mutations, deltas in mutations_deltas.items():
-                self.bandit.update(mutations, len(deltas), deltas)
-            
+            # for mutations, deltas in mutations_deltas.items():
+            #     self.bandit.update(mutations, deltas) # len deltas can be removed, the number of rewards is the number of plays
+                
             # print([(g.key, g.fitness-f, m) for g,f,m in self.records[-1]])
         
-        self.bandit.report()
+        self.reporters.post_reproduction(config, self.bandit, None)
 
 
         self.records.append([])
@@ -170,12 +167,10 @@ class BanditReproduction(DefaultReproduction):
 
             # Randomly choose parents and produce the number of offspring allotted to the species.
             while spawn > 0:
-                spawn -= 1 
-                
-                crossover = random() < self.reproduction_config.crossover_rate
+                spawn -= 1
 
                 parent1_id, parent1 = choice(old_members)
-                parent2_id, parent2 = (parent1_id, parent1) if not crossover else choice(old_members)
+                parent2_id, parent2 = (parent1_id, parent1)
 
                 gid = next(self.genome_indexer)
                 child = config.genome_type(gid)
@@ -188,33 +183,12 @@ class BanditReproduction(DefaultReproduction):
                 new_population[gid] = child
                 self.ancestors[gid] = (parent1_id, parent2_id) 
 
-                if not crossover:
-                    self.records[-1].append((child, parent1.fitness, mutation_directives))
-
+                self.records[-1].append((child, parent1.fitness, mutation_directives))
+        
         return new_population
 
-# This class is irrelevant as long as bandit is in control of mutation rates
-# It was nice to try though
-class BanditGenomeConfig(DefaultGenomeConfig):
-
-    def __init__(self, params):
-
-        _my_params = [ConfigParameter("node_mutate_prob", float),
-                      ConfigParameter("conn_mutate_prob", float)]
-
-        for p in _my_params:
-            setattr(self, p.name, p.interpret(params))
-
-        super().__init__( params)
-
 class BanditGenome(DefaultGenome):
-
-    @classmethod
-    def parse_config(cls, param_dict):
-        param_dict['node_gene_type'] = DefaultNodeGene
-        param_dict['connection_gene_type'] = DefaultConnectionGene
-        return BanditGenomeConfig(param_dict)
-
+    
     def __init__(self, key):
         super().__init__(key)
         # self.last_mutations = None # TODO kept by reproduction
@@ -254,3 +228,5 @@ class BanditGenome(DefaultGenome):
                 # I mean it shouldn't have gotten here but we'll see
                 print("Nonononononononononononononononononononononononono")
                 pass
+
+        

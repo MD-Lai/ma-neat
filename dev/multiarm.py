@@ -1,6 +1,6 @@
 from neat import DefaultGenome, DefaultReproduction
 from neat.genome import DefaultGenomeConfig
-import bandit2
+import bandit3
 
 import math
 from random import random, choice
@@ -12,7 +12,6 @@ from neat.math_util import mean
 from neat.six_util import iteritems, itervalues
 from neat.genes import DefaultConnectionGene, DefaultNodeGene
 
-
 class BanditReproduction(DefaultReproduction):
 
     @classmethod
@@ -21,20 +20,16 @@ class BanditReproduction(DefaultReproduction):
                                   [ConfigParameter('elitism', int, 0),
                                    ConfigParameter('survival_threshold', float, 0.2),
                                    ConfigParameter('min_species_size', int, 2)])
+    def bandit_type(self, bandit):
+        # Take a bandit from external sources
+        self.bandit = bandit
 
     def __init__(self, config, reporters, stagnation):
         # pylint: disable=super-init-not-called
         super().__init__(config, reporters, stagnation)
 
-        # Change here to change bandit
-
-        self.bandit = bandit2.RandomMutator(rates=[0.2, 0.1, 0.8, 0.5, 0.2, 0.9])
-
-        # self.bandit = bandit2.EpsMutator(epsilon=0.5)
-
-        # self.bandit = bandit2.TSMutator(n_plays=[1,2,3])
         self.records = [] # list of {id: (parent_fitness, mutation_directives)} per generation
-        # self.ancestors = {} # exists in super class
+
         self.normalising = False
 
     # Seems like the right point to initiate a bandit, at the reproduction level
@@ -114,36 +109,27 @@ class BanditReproduction(DefaultReproduction):
         # Fitness improvement as a fraction of best improvement? - seems good, then one mutation is always 1, rest are < 1
         # How to reward or perceive "failure"? Same as fraction but for decreases? 
         # 1 if best arm in generation else 0?
-        mutations_deltas = {}
         if generation > 0:
-            # normalise scores: get mean and standard deviation
-            # FIXME doesn't account for scale of delta, maybe that's fine since it encapsulates changes in reward delta in a more dramatic way
-            all_deltas = [mutant.fitness - old_fitness for (mutant, old_fitness, _) in self.records[-1]]
-            
-            mean_delta = sum(all_deltas) / len(all_deltas)
-            dev_delta  = (sum([(d-mean_delta)**2 for d in all_deltas]) / len(all_deltas))**0.5
+            mutation_delta = []
 
             for mutant, old_fitness, mutations in self.records[-1]:
                 fit_delta = mutant.fitness - old_fitness
                 
-                # subtract mean, divide by standard deviation
-                if self.normalising:
-                    fit_delta = (fit_delta - mean_delta) / dev_delta
-                # clamp to -2, 2
-                # fit_delta = max(min(fit_delta, 2), -2)
-
                 for m in mutations:
-                    if m not in mutations_deltas:
-                        mutations_deltas[m] = [fit_delta]
-                    else:
-                        mutations_deltas[m].append(fit_delta)
+                    mutation_delta.append((m, fit_delta))
+            # print(mutation_delta)
+            self.bandit.update_all(mutation_delta)
+            #         if m not in mutations_deltas:
+            #             mutations_deltas[m] = [fit_delta]
+            #         else:
+            #             mutations_deltas[m].append(fit_delta)
 
-            for mutations, deltas in mutations_deltas.items():
-                self.bandit.update(mutations, deltas) # len deltas can be removed, the number of rewards is the number of plays
-                # print(mutations, deltas)
+            # for mutations, deltas in mutations_deltas.items():
+            #     self.bandit.update(mutations, deltas) # len deltas can be removed, the number of rewards is the number of plays
+                
             # print([(g.key, g.fitness-f, m) for g,f,m in self.records[-1]])
         
-            print(self.bandit.report())
+        self.reporters.post_reproduction(config, self.bandit, None)
 
 
         self.records.append([])
@@ -199,7 +185,7 @@ class BanditReproduction(DefaultReproduction):
                 self.ancestors[gid] = (parent1_id, parent2_id) 
 
                 self.records[-1].append((child, parent1.fitness, mutation_directives))
-
+        
         return new_population
 
 # This class is irrelevant as long as bandit is in control of mutation rates
@@ -263,3 +249,5 @@ class BanditGenome(DefaultGenome):
                 # I mean it shouldn't have gotten here but we'll see
                 print("Nonononononononononononononononononononononononono")
                 pass
+
+        
