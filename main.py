@@ -9,27 +9,35 @@ import pickle
 from tqdm import tqdm
 
 # import tests
+# Continuous
 import env_Pendulum_v0
 import env_BipedalWalker_v2
 import env_BipedalWalkerHardcore_v2
 import env_LunarLanderContinuous_v2
 
+# Classifiers
+import cls_MNIST
+import cls_banknote
+import cls_wine
+
+tests = [
+    cls_wine,
+    cls_banknote,
+    env_Pendulum_v0,
+    env_BipedalWalker_v2,
+    env_BipedalWalkerHardcore_v2,
+    env_LunarLanderContinuous_v2
+]
 def main():
-    tests = [
-        env_Pendulum_v0,
-        env_BipedalWalker_v2,
-        env_BipedalWalkerHardcore_v2,
-        env_LunarLanderContinuous_v2
-    ]
+    for i in tqdm(range(50)):
+        for t in tqdm(tests):
+            run(t.eval_genomes, t.cfg, test=f"{t.name}", test_id=f"{i}", gens=200)
 
-    for t in tqdm(tests):
-        results = []
-        for i in tqdm(range(50)):
-            result = run(t.eval_genomes, t.cfg, test=f"{t.name}", test_id=f"{i}", gens=5)
-            results.append(result)
-        with open(f"{t.name}/results.pyc", 'wb') as gherkin:
-            pickle.dump(results, gherkin)
-
+    # Because MNIST takes so bloody long, I want to let other things finish first before trying it
+    t = cls_MNIST
+    for i in tqdm(range(50)):
+        run(t.eval_genomes, t.cfg, test=f"{t.name}", test_id=f"{i}", gens=200)
+            
 def run(fit_func, cfg_file, test="", test_id="", gens=200):
 
     bandits = [
@@ -41,7 +49,7 @@ def run(fit_func, cfg_file, test="", test_id="", gens=200):
 
     infos = []
     
-    for b in bandits:
+    for b in tqdm(bandits):
         config = neat.Config(multiarm.BanditGenome, multiarm.BanditReproduction,
                             neat.DefaultSpeciesSet, neat.DefaultStagnation,
                             cfg_file)
@@ -67,7 +75,11 @@ def run(fit_func, cfg_file, test="", test_id="", gens=200):
 
         infos.append((winner, stats, b_stats, config))
 
-    return infos
+    with open(f"{test}/{test_id}_stats.pyc", 'wb') as gherkin:
+        pickle.dump(infos, gherkin)
+        # Saves list of 
+        # [(winner, neat_stats, bandit_stats, config),...,(winner, neat_stats, bandit_stats, config)]
+        # where each tuple is a bandit, in order: Random, Probabilistic, Epsilon, Thompson
 
 if __name__ == "__main__":
     main()
