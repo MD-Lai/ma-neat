@@ -1,0 +1,11 @@
+# Project ID
+punim1244
+# Project Program dir
+/home/mdlai/maneat
+cd /home/mdlai/maneat
+# Project Storage dir
+/data/cephfs/punim1244/maneat
+cd /data/cephfs/punim1244/maneat
+# Run all tests
+ma_neat_tests_all.sh
+bash ma_neat_tests_all.sh

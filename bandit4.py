@@ -7,7 +7,10 @@ from numpy.random import beta, choice
 from numpy import median
 from math import log
 from statistics import mean
+
 import matplotlib.pyplot as plt
+import copy
+import pickle
 
 import helper
 
@@ -45,7 +48,10 @@ class AbstractMutator(ABC):
 
         self.counts = [0] * len(self.arms)
 
-        self.raw_rewards = []
+        # self.raw_rewards = []
+
+        self.arm_history = []
+        self.reward_history = []
     
     @abstractmethod
     def _arms_init(self, *args, **kwargs):
@@ -68,6 +74,10 @@ class AbstractMutator(ABC):
     # Selection method for basic multi-play bandit, selecting top n arms to play 
     def play(self, t):
         
+        # Record arms and rewards
+        self.arm_history.append(copy.deepcopy(self.arms))
+        self.reward_history.append(copy.deepcopy(self.arms))
+
         self.pre_play(t)
         # Generate rating for all arms, <0 indicates don't consider arm
         arm_ratings = [self.rate_arm(i, a, t) for i,a in enumerate(self.arms)]
@@ -107,7 +117,7 @@ class AbstractMutator(ABC):
         for mu, de in mu_de:
             des[mu].append(de)
         
-        self.raw_rewards.append(des)
+        # self.raw_rewards.append(des)
 
         des_proc = self.pre_update(des)
 
@@ -145,8 +155,12 @@ class AbstractMutator(ABC):
         return report
 
     def get_data(self):
-        # ((arm, play)), (gen_best, gen_worst), (best,worst), [raw_rewards]
-        return tuple((a,p) for a,p in zip(self.arms, self.counts)), (self.gen_best, self.gen_worst), (self.best, self.worst), self.raw_rewards
+        # ((arm, play)), (generational_best, generational_worst), (overall_best, overall_worst) 
+        return tuple((a,p) for a,p in zip(self.arms, self.counts)), (self.gen_best, self.gen_worst), (self.best, self.worst)
+
+    def save(self, file_name=""):
+        with open(file_name, 'wb') as gherkin:
+            pickle.dump((self.arm_history, self.reward_history), gherkin)
 
 class MutatorInterfacee(AbstractMutator):
 

@@ -4,11 +4,10 @@ import random
 import numpy as np
 
 cfg = "cfg_banknote"
-name = "wine"
+name = "bank"
 
 data.LoadEnvironment("datasets/banknote/data_banknote_authentication.txt", "datasets/banknote/banknote.form")
 
-# https://stackoverflow.com/questions/23289547/shuffle-two-list-at-once-with-same-order
 x_test, y_test = data.values, data.targets
 
 def eval_genomes(genomes, config):

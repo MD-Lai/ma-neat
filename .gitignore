@@ -1,3 +1,11 @@
+# Ignore all the pickles, results, slurms, svgs, pngs.
+*.pickle
+results/
+spartan/
+*.slurm
+*.svg
+*.png
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
