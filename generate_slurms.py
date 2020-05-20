@@ -3,11 +3,32 @@
 # cpu = int(cpu)
 # sta = int(sta)
 
-test = 6
-band = 4
+test = 7
+band = 7
 cpu = 32
 sta = 0
 
+# tests = [
+#     env_Pendulum_v0,
+#     env_BipedalWalker_v2,
+#     env_BipedalWalkerHardcore_v2,
+#     env_LunarLanderContinuous_v2,
+#     cls_wine,
+#     cls_banknote,
+#     cls_MNIST
+# ]
+
+run_times = [
+    "0-01:00:00",
+    "0-06:00:00",
+    "0-06:00:00",
+    "1-12:00:00",
+    "2-00:00:00",
+    "0-01:00:00",
+    "2-00:00:00"
+]
+
+print("#!/bin/bash")
 for tst in range(test):
     for ban in range(band):
         file_name = f"ma_neat_{tst}_{ban}_{cpu}_{sta}-{sta+cpu-1}.slurm"
@@ -35,13 +56,14 @@ for tst in range(test):
 #SBATCH --mail-user=derl@student.unimelb.edu.au\n\
 \n\
 # The maximum running time of the job in days-hours:mins:sec\n\
-#SBATCH --time=1-00:00:00\n\
+#SBATCH --time={run_times[int(tst)]}\n\
 \n\
 # Run the job from the directory where it was launched (default)\n\
 \n\
 module load Python/3.7.1-GCC-6.2.0\n\
 python main_mp.py {tst} {ban} {cpu} {sta}\n\
-mv results_{tst}_* /data/cephfs/punim1244/maneat\n'
+mkdir /data/cephfs/punim1244/maneat/test_{tst}_{ban}\n\
+mv results_{tst}_{ban}* /data/cephfs/punim1244/maneat/test_{tst}_{ban}\n'
 
         with open(file_name, 'w', newline='\n') as slurm:
             slurm.write(contents)
