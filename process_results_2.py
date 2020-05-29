@@ -3,6 +3,7 @@ import os
 
 import numpy as np
 import matplotlib.pyplot as plt
+from scipy import stats
 
 # Need to track generations to completion, max fitness reached. 
 
@@ -23,20 +24,26 @@ def open_test(tst, bdt, ind):
 
     return winner, stats, b_stats, config
 
-def plot_series(seriess, labels=None, markers=None, title="", x_axis="",y_axis="", show=True, save_file=None):
+    
+
+def plot_series(seriesxs, seriesys, labels=None, markers=None, title="", x_axis="",y_axis="", show=True, save_file=None):
+    plt.close('all')
     if labels is None:
-        labels = [i for i in range(len(seriess))]
+        labels = [i for i in range(len(seriesxs))]
     if markers is None:
-        markers = ["" for i in range(len(seriess))]
+        markers = ["" for i in range(len(seriesxs))]
     
     fig, ax = plt.subplots()
     ax.set_title(title)
-    for (seriesx,seriesy),l,m in zip(seriess, labels, markers):
+    for seriesx,seriesy,l,m in zip(seriesxs, seriesys, labels, markers):
         ax.plot(seriesx, seriesy, label=l, marker=m)
         ax.set_xlabel(x_axis)
         ax.set_ylabel(y_axis)
 
     ax.legend(loc='best')
+    ax.grid()
+    ax.set_xlim(0,200)
+    # ax.set_ylim(-30,25)
     if show:
         plt.show()
 
@@ -66,37 +73,113 @@ def get_test_fitnesses(tst, bdt, runs):
 def smooth_series(series, window):
     return [sum(series[i:i+window])/window for i in range(len(series)-window+1)]
 
-def ind_peak_dist(series):
-    ind, peak = max(list(enumerate(series)), key=lambda x: x[1])
-    d_avg = ( sum( [(x_i-peak) ** 2 for x_i in series] ) / ( len(series)-1) )**0.5
-    return ind, peak, d_avg
+# def ind_peak_dist_num(series, peak_scale=1, offset=0):
+#     num_above = min(int(len(series) * (1-peak_scale)), len(series) - 1)
+#     series_gen = sorted(enumerate(series), key=lambda x: x[1], reverse=True)
 
-def ipds_tests(tst, bdt, runs, window):
+#     i, p = series_gen[num_above]
+
+#     d_avg = ( sum( [(x_i-p) ** 2 for x_i in series] ) / ( len(series)-1) )**0.5
+    
+#     return i, p, d_avg
+
+def ind_peak_line_dist_perc(series, peak_scale, offset):
+    series_t = [s+offset for s in series]
+    peak_scaled = max(series_t) * peak_scale
+    for i, s_t in enumerate(series_t):
+        if s_t >= peak_scaled:
+            i = i 
+            p = series[i]
+            p_line = peak_scaled-offset
+            d_avg = ( sum( [(x_i-p) ** 2 for x_i in series] ) / ( len(series)-1) )**0.5
+            return i, p, p_line, d_avg
+    # hasn't found it, all fitnesses < 0
+    i, p = max(enumerate(series), key=lambda x: x[1])
+    return i,p,p, ( sum( [(x_i-max(series)) ** 2 for x_i in series] ) / ( len(series)-1) )**0.5
+
+# def ind_peak_dist_perc(series, peak_scale=1, offset=0):
+#     # ind, peak = max(list(enumerate(series)), key=lambda x: x[1])
+#     low = min(series) if max(series) <= 0 else 0 # only translate tests with fitnesses that peak < 0
+#     series_t = [s-low for s in series]
+#     peak_scaled = max(series_t) * peak_scale
+#     for i, s_t in enumerate(series_t):
+#         if s_t >= peak_scaled:
+#             ind = i
+#             break
+    
+#     peak = peak_scaled + low
+#     d_avg = ( sum( [(x_i-peak) ** 2 for x_i in series] ) / ( len(series)-1) )**0.5
+#     return ind, peak, d_avg
+
+# def ind_peak_dist_min(series, peak_scale=1, offset=0):
+#     # peak_scale does nothing but whatever
+#     # Find fitness value that minimises distance value
+#     avg = sum(series) / len(series)
+#     dist_list = [ abs(x-avg) for x in series ] # distance from point x to avg 
+#     i, p = min(enumerate(series), key=lambda x: dist_list[x[0]])
+#     d_avg = sum(dist_list) / len(dist_list)
+#     return i,p,d_avg
+
+def demonstrate_cutoff(tst, bdt, run, window, peak_scale, offset):
+    tst_names=["Pendulum_v0","BipedalWalker_v3","BipedalWalkerHardcore_v3","LunarLanderContinuous_v2","Banknote_Auth","Wine_Quality","MNIST"]
+    bdt_names=["Base","N_Prob","H_Prob","N_Eps","H_Eps","N_TS","H_TS"]
+    _,f,_,_ = get_fitness(tst, bdt, run)
+    f = smooth_series(f, window)
+    i,p,l,d = ind_peak_line_dist_perc(f, peak_scale, offset)
+
+    plt.close('all')
+    fig, ax = plt.subplots()
+    ax.grid()
+    ax.set_title(f"Test:{tst_names[tst]} Bandit:{bdt_names[bdt]} Run:{run}")
+    ax.plot(range(len(f)), f, label=f"Run Fitness (window={window})")
+    ax.plot(range(len(f)), [l for _ in range(len(f))],label=f"{peak_scale:.2f}x Peak Fitness={l:.2f}")
+    ax.scatter([i],[p], label=f"Selected Point : Fitness={p:.2f}", marker='o', c="red")
+    # ax.set_xlim(0,200)
+    # ax.set_ylim(-30,25)
+    ax.set_ylabel("Fitness")
+    ax.set_xlabel("Generation")
+    ax.legend(loc="lower right")
+    plt.show()
+
+def iplds_runs(tst, bdt, runs, window, peak_scale=1, offset=0):
     gbam = get_test_fitnesses(tst, bdt, runs)
-    ipds = []
+    iplds = []
     for gens, best, avg, median in gbam:
         # print(best)
         best_smooth = smooth_series(best, window)
-        ipd = ind_peak_dist(best_smooth)
-
-        ipds.append(ipd)
+        ipld = ind_peak_line_dist_perc(best_smooth, peak_scale, offset)
+        iplds.append(ipld)
 
     # print(ipds[:10])
-    return ipds
+    return iplds
 
-def plot_ipds(ipds, labels=None, markers=None, title="", x_axis="", y_axis="", show=True, save_file=None): # flesh out to include labels
+def iplds_bdts_runs(tst, bdts, runs, window, peak_scale=1, peak_type=0, offset=0):
+    return [iplds_runs(tst, b, runs, window, peak_scale, offset) for b in range(*bdts)]
+
+def iplds_tsts_bdts_runs(tsts, bdts, runs, window, peak_scale=1, offset=0):
+    return [iplds_bdts_runs(t, bdts, runs, window, peak_scale, offset) for t in range(*tsts)]
+
+def plot_iplds(iplds, labels=None, markers=None, title="", x_axis="", y_axis="", show=True, save_file=None): # flesh out to include labels
+    plt.close('all')
     if labels is None:
-        labels = [i for i in range(len(ipds))]
+        labels = [i for i in range(len(iplds))]
     if markers is None:
-        markers = ["." for i in range(len(ipds))]
+        markers = ["." for i in range(len(iplds))]
 
     fig, ax = plt.subplots()
     ax.set_title(title)
-    for ipd, l, m in zip(ipds, labels, markers):
-        i, p, d = zip(*ipd)
-        ax.scatter(i, p, label=l, marker=m, alpha=0.5)
+    ymin = float("inf")
+    for ipld, lab, mar in zip(iplds, labels, markers):
+        i, p, l, d = zip(*ipld)
+        ax.scatter(i, p, label=lab, marker=mar, alpha=0.5)
         ax.set_xlabel(x_axis)
         ax.set_ylabel(y_axis)
+        low = min(p)
+        if ymin > low:
+            ymin = low
+    
+    ax.set_xlim(0,200)
+    # ax.set_ylim(min(0,ymin))
     ax.legend(loc="best")
     ax.grid()
     if show:
@@ -105,4 +188,11 @@ def plot_ipds(ipds, labels=None, markers=None, title="", x_axis="", y_axis="", s
     if save_file is not None:
         ax.savefig(save_file) 
     
-    plt.close()
+    plt.close('all')
+
+def calc_p_vals(base, *models):
+    return [stats.kruskal(base, m) for m in models], stats.kruskal(base, *models)
+
+# For all tsts, 
+# def generate_all_graphs( , show=True, save_files=None):
+    
