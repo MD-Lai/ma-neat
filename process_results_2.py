@@ -27,8 +27,6 @@ def open_test(tst, bdt, ind):
 
     return winner, stats, b_stats, config
 
-    
-
 def plot_series(seriesxs, seriesys, labels=None, markers=None, title="", x_axis="",y_axis="", show=True, save_file=None):
     plt.close('all')
     if labels is None:
@@ -76,16 +74,7 @@ def get_test_fitnesses(tst, bdt, runs):
 def smooth_series(series, window):
     return [sum(series[i:i+window])/window for i in range(len(series)-window+1)]
 
-# def ind_peak_dist_num(series, peak_scale=1, offset=0):
-#     num_above = min(int(len(series) * (1-peak_scale)), len(series) - 1)
-#     series_gen = sorted(enumerate(series), key=lambda x: x[1], reverse=True)
-
-#     i, p = series_gen[num_above]
-
-#     d_avg = ( sum( [(x_i-p) ** 2 for x_i in series] ) / ( len(series)-1) )**0.5
-    
-#     return i, p, d_avg
-
+# TODO rewrite this s.t. offset is the "goal" fitness, see if it reaches it 
 def ind_peak_line_dist_perc(series, peak_scale, offset):
     series_t = [s+offset for s in series]
     peak_scaled = max(series_t) * peak_scale
@@ -99,29 +88,6 @@ def ind_peak_line_dist_perc(series, peak_scale, offset):
     # hasn't found it, all fitnesses < 0
     i, p = max(enumerate(series), key=lambda x: x[1])
     return i,p,p, ( sum( [(x_i-max(series)) ** 2 for x_i in series] ) / ( len(series)-1) )**0.5
-
-# def ind_peak_dist_perc(series, peak_scale=1, offset=0):
-#     # ind, peak = max(list(enumerate(series)), key=lambda x: x[1])
-#     low = min(series) if max(series) <= 0 else 0 # only translate tests with fitnesses that peak < 0
-#     series_t = [s-low for s in series]
-#     peak_scaled = max(series_t) * peak_scale
-#     for i, s_t in enumerate(series_t):
-#         if s_t >= peak_scaled:
-#             ind = i
-#             break
-    
-#     peak = peak_scaled + low
-#     d_avg = ( sum( [(x_i-peak) ** 2 for x_i in series] ) / ( len(series)-1) )**0.5
-#     return ind, peak, d_avg
-
-# def ind_peak_dist_min(series, peak_scale=1, offset=0):
-#     # peak_scale does nothing but whatever
-#     # Find fitness value that minimises distance value
-#     avg = sum(series) / len(series)
-#     dist_list = [ abs(x-avg) for x in series ] # distance from point x to avg 
-#     i, p = min(enumerate(series), key=lambda x: dist_list[x[0]])
-#     d_avg = sum(dist_list) / len(dist_list)
-#     return i,p,d_avg
 
 def demonstrate_cutoff(tst, bdt, run, window, peak_scale, offset):
     tst_names=["Pendulum_v0","BipedalWalker_v3","BipedalWalkerHardcore_v3","LunarLanderContinuous_v2","Banknote_Auth","Wine_Quality","MNIST"]
@@ -204,11 +170,21 @@ def plot_and_save_iplds():
 
 
 def calc_p_vals(base, *models):
-    return [stats.kruskal(base, m)[1] for m in models]
+    ps = []
+
+    for m in models:
+        try:
+            p = stats.kruskal(base, m)[1]
+        except ValueError as v:
+            p = 1
+        finally:
+            ps.append(p)
+
+    return ps
 
 def show_p_vals():
     offs = (250,0,0,0,0,0,8000)
-    ts = iplds_tsts_bdts_runs((0,7),(0,7),(0,32),20, offs, 0.97)
+    ts = iplds_tsts_bdts_runs((0,7),(0,7),(0,32),20, offs, 1)
     labs = ["Base", "N-Prob", "H-Prob", "N-Eps", "H-Eps", "N-TS", "H-TS"]
     test_names = ["Pendulum_v0","BipedalWalker_v3","BipedalWalkerHardcore_v3","LunarLanderContinuous_v2","Banknote_Auth","Wine_Quality","MNIST"]
     pv_gens_all= []
@@ -260,17 +236,8 @@ def show_p_vals():
         dts = dts.append(dt)
     print(dts)
     dts.to_csv("Results.csv", index=False)
-        # print(dt)
-        # print(f"Median={gm}")
-        # print(f"Diff={[g-gm[0] for g in gm]}")
-        # print(f"P={g}")
-        # print()
-        # print(f"{test_names[i]} Fits p")
-        # print(f"Median={fm}")
-        # print(f"Diff={[f-fm[0] for f in fm]}")
-        # print(f"P={f}")
-
-# For all tsts, 
-# def generate_all_graphs( , show=True, save_files=None):
+    
+# TODO it would be great if we can see the bandits at every generation, generate rewards, plays, arms graphs. 
 if __name__=="__main__":
     show_p_vals()
+
