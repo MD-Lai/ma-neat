@@ -4,6 +4,9 @@ import os
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy import stats
+from numpy import median
+import pandas as pd
+from math import ceil
 
 # Need to track generations to completion, max fitness reached. 
 
@@ -131,15 +134,16 @@ def demonstrate_cutoff(tst, bdt, run, window, peak_scale, offset):
     fig, ax = plt.subplots()
     ax.grid()
     ax.set_title(f"Test:{tst_names[tst]} Bandit:{bdt_names[bdt]} Run:{run}")
-    ax.plot(range(len(f)), f, label=f"Run Fitness (window={window})")
-    ax.plot(range(len(f)), [l for _ in range(len(f))],label=f"{peak_scale:.2f}x Peak Fitness={l:.2f}")
-    ax.scatter([i],[p], label=f"Selected Point : Fitness={p:.2f}", marker='o', c="red")
-    # ax.set_xlim(0,200)
-    # ax.set_ylim(-30,25)
+    ax.plot(range(len(f)), f, label=f"Smoothed Fitness (window={window})")
+    ax.plot(range(200), [l for _ in range(200)],label=f"{peak_scale:.2f}x Peak Fitness={l:.2f}")
+    ax.scatter([i],[p], label=f"Selected Point : (Gens,Fit)=({i},{p:.2f})", marker='o', c="red")
+    ax.set_xlim(0,200)
+    ax.set_ylim(-30,25)
     ax.set_ylabel("Fitness")
     ax.set_xlabel("Generation")
     ax.legend(loc="lower right")
     plt.show()
+    fig.savefig(f"Test_{tst_names[tst]} Bandit_{bdt_names[bdt]} Run_{run}")
 
 def iplds_runs(tst, bdt, runs, window, peak_scale=1, offset=0):
     gbam = get_test_fitnesses(tst, bdt, runs)
@@ -153,20 +157,20 @@ def iplds_runs(tst, bdt, runs, window, peak_scale=1, offset=0):
     # print(ipds[:10])
     return iplds
 
-def iplds_bdts_runs(tst, bdts, runs, window, peak_scale=1, peak_type=0, offset=0):
+def iplds_bdts_runs(tst, bdts, runs, window, offset, peak_scale=1):
     return [iplds_runs(tst, b, runs, window, peak_scale, offset) for b in range(*bdts)]
 
-def iplds_tsts_bdts_runs(tsts, bdts, runs, window, peak_scale=1, offset=0):
-    return [iplds_bdts_runs(t, bdts, runs, window, peak_scale, offset) for t in range(*tsts)]
+def iplds_tsts_bdts_runs(tsts, bdts, runs, window, offsets, peak_scale=1):
+    return [iplds_bdts_runs(t, bdts, runs, window, offsets[t], peak_scale) for t in range(*tsts)]
 
-def plot_iplds(iplds, labels=None, markers=None, title="", x_axis="", y_axis="", show=True, save_file=None): # flesh out to include labels
+def plot_iplds(iplds, labels=None, markers=None, title="", x_axis="", y_axis="", figsize=(16,9),show=True, save_file=None): # flesh out to include labels
     plt.close('all')
     if labels is None:
         labels = [i for i in range(len(iplds))]
     if markers is None:
         markers = ["." for i in range(len(iplds))]
 
-    fig, ax = plt.subplots()
+    fig, ax = plt.subplots(figsize=figsize)
     ax.set_title(title)
     ymin = float("inf")
     for ipld, lab, mar in zip(iplds, labels, markers):
@@ -186,13 +190,87 @@ def plot_iplds(iplds, labels=None, markers=None, title="", x_axis="", y_axis="",
         plt.show()
 
     if save_file is not None:
-        ax.savefig(save_file) 
+        fig.savefig(save_file) 
     
     plt.close('all')
 
+def plot_and_save_iplds():
+    offs = (250,0,0,0,0,0,8000)
+    ts = iplds_tsts_bdts_runs((0,7),(0,7),(0,32),20, offs, 0.97)
+    labs = ["Base", "N-Prob", "H-Prob", "N-Eps", "H-Eps", "N-TS", "H-TS"]
+    test_names = ["Pendulum_v0","BipedalWalker_v3","BipedalWalkerHardcore_v3","LunarLanderContinuous_v2","Banknote_Auth","Wine_Quality","MNIST"]
+    for i, ti in enumerate(ts):
+        plot_iplds(ti, labels=labs, title=f"Generations and Peak Fitness Test:{test_names[i]}", x_axis="Generations", y_axis="Peak Fitness", save_file=f"processed/gen_peak_{i}")
+
+
 def calc_p_vals(base, *models):
-    return [stats.kruskal(base, m) for m in models], stats.kruskal(base, *models)
+    return [stats.kruskal(base, m)[1] for m in models]
+
+def show_p_vals():
+    offs = (250,0,0,0,0,0,8000)
+    ts = iplds_tsts_bdts_runs((0,7),(0,7),(0,32),20, offs, 0.97)
+    labs = ["Base", "N-Prob", "H-Prob", "N-Eps", "H-Eps", "N-TS", "H-TS"]
+    test_names = ["Pendulum_v0","BipedalWalker_v3","BipedalWalkerHardcore_v3","LunarLanderContinuous_v2","Banknote_Auth","Wine_Quality","MNIST"]
+    pv_gens_all= []
+    pv_fits_all= []
+    gens_median_all = []
+    fits_median_all = []
+    for t in ts:
+        gens_curr = []
+        fits_curr = []
+        gens_median = []
+        fits_median = []
+        for b in t:
+            g,f,_,_ = zip(*b)
+            gens_curr.append(g)
+            fits_curr.append(f)
+            gens_median.append( median(g) )
+            fits_median.append( median(f) )
+            
+        gens_median_all.append(gens_median)
+        fits_median_all.append(fits_median)
+        
+        pv_gens = calc_p_vals(gens_curr[0], *gens_curr)
+        pv_fits = calc_p_vals(fits_curr[0], *fits_curr)
+
+        pv_gens_all.append(pv_gens)
+        pv_fits_all.append(pv_fits)
+    
+    dts = pd.DataFrame()
+    for i, (g, f, gm, fm) in enumerate(zip(pv_gens_all, pv_fits_all, gens_median_all, fits_median_all)):
+        # print(f"{test_names[i]} Gens p")
+
+        dt = pd.DataFrame()
+        dt['test_name'] = [test_names[i]]
+
+        for l,gl,fl,gml,fml in zip(labs, g,f,gm,fm):
+            if not l=='Base':
+
+                dt[f'median_g_{l}'] = [f'{ceil(gml)} ({gl:.2f})'] if gl > 0.01 else [f'{ceil(gml)} (<0.01)'] #[gml]
+                # dt['diff_g'] = [g-gm[0] for g in gm]
+                # dt[f'p_g_{l}'] = [gl]
+                dt[f'median_f_{l}'] = [f'{fml:.2f} ({fl:.2f})'] if fl > 0.01 else [f'{fml:.2f} (<0.01)'] # [fml]
+                # dt['diff_f'] = [f-fm[0] for f in fm]
+                # dt[f'p_f_{l}'] = [fl]
+            else:
+                dt[f'median_g_{l}'] = [f'{ceil(gml)}'] #[gml]
+                dt[f'median_f_{l}'] = [f'{fml:.2f}']
+        #dts = pd.concat([dts, dt], axis=1)
+
+        dts = dts.append(dt)
+    print(dts)
+    dts.to_csv("Results.csv", index=False)
+        # print(dt)
+        # print(f"Median={gm}")
+        # print(f"Diff={[g-gm[0] for g in gm]}")
+        # print(f"P={g}")
+        # print()
+        # print(f"{test_names[i]} Fits p")
+        # print(f"Median={fm}")
+        # print(f"Diff={[f-fm[0] for f in fm]}")
+        # print(f"P={f}")
 
 # For all tsts, 
 # def generate_all_graphs( , show=True, save_files=None):
-    
+if __name__=="__main__":
+    show_p_vals()

@@ -69,13 +69,23 @@ def plot_fitness(tst,bdt,ind, save=True, show=False):
     # fits.plot(generation, median_fitness, 'g-', label="median")
     fits.plot(generation, avg_fitness, 'b-', label="average")
 
-    fits.set_title("Population's average and best fitness")
+    fits.set_title(f"Population's average and best fitness {tst}.{bdt}.{ind}")
     fits.set_xlabel("Generations")
     fits.set_ylabel("Fitness")
     fits.grid()
-    fits.legend(loc="best")
+    fits.legend(loc="lower right")
 
     if save:
+        path = f"processed/test_{tst}_{bdt}"
+        try:
+            if not os.path.exists(path):
+                os.mkdir(path)
+        except OSError as osE:
+            print (f"Creation of the directory {path} failed")
+            print (osE)
+
+        visualize.plot_species(statistics, view=False, filename=f"processed/test_{tst}_{bdt}/processed_{tst}_{bdt}_{ind}_species")
+
         filename = f"processed/test_{tst}_{bdt}/processed_{tst}_{bdt}_{ind}_fitness"
         fig.savefig(filename)
     
@@ -92,49 +102,49 @@ def plot_and_save_fitnesses(tsts, bdts):
 
 # Just imagine all bandits are exactly the same for now, 
 # add exceptions later
-def plot_bandits(tst,bdt,ind, save=True, show=False):
+# def plot_bandits(tst,bdt,ind, save=True, show=False):
 
-    pickle_file = f"spartan/test_{tst}_{bdt}/results_{tst}_{bdt}_{ind}.pickle"
+#     pickle_file = f"spartan/test_{tst}_{bdt}/results_{tst}_{bdt}_{ind}.pickle"
 
-    with open(pickle_file, 'rb') as data_pickle:
-        winner, stats, b_stats, config = pickle.load(data_pickle)
+#     with open(pickle_file, 'rb') as data_pickle:
+#         winner, stats, b_stats, config = pickle.load(data_pickle)
 
-    arms, rewards, counts, gen_bests, gen_worsts, ov_bests, ov_worsts = list(zip(*b_stats.generational_data))
+#     arms, rewards, counts, gen_bests, gen_worsts, ov_bests, ov_worsts = list(zip(*b_stats.generational_data))
 
-    per_arms = list(zip(*arms))
-    per_rewards = list(zip(*rewards))
+#     per_arms = list(zip(*arms))
+#     per_rewards = list(zip(*rewards))
 
-    fig1, arms,rewa = plt.subplots(1,2, figsize=(16,9))
-    # betas needs different way to show arms
-    # Show expected reward: 1/(1+(f/s))
-    if bdt == "5" or bdt == "6": 
-        for i,a in enumerate(per_arms):
-            arms.plot([1/(1+((f+1)/(s+1))) for f,s in a], label = i)
-    else:
-        for i, a in enumerate(per_arms):
-            arms.plot(a, label=i)
-    arms.legend()
+#     fig1, arms,rewa = plt.subplots(1,2, figsize=(16,9))
+#     # betas needs different way to show arms
+#     # Show expected reward: 1/(1+(f/s))
+#     if bdt == "5" or bdt == "6": 
+#         for i,a in enumerate(per_arms):
+#             arms.plot([1/(1+((f+1)/(s+1))) for f,s in a], label = i)
+#     else:
+#         for i, a in enumerate(per_arms):
+#             arms.plot(a, label=i)
+#     arms.legend()
 
-    # rando needs different way to show rewards
-    # show both heuristic and exact rewards
-    # TODO Consider if we want to save heuristic and exact on the same or just 1 for simplicity
-    # TODO like [arms, heur/exac] as the subplot layout
-    if bdt == "0":
-        # fig2, (heur, exac) = plt.subplots(1,2, sharey=True)
-        for i,h_e in enumerate(per_rewards):
-            heur.plot([h for h,_ in h_e], label=i)
-            exac.plot([e for _,e in h_e], label=i)
-        heur.title.set_text("Heuristic")
-        exac.title.set_text("Exact")
-        heur.legend()
-        exac.legend()
-    else:
-        for i,r in enumerate(per_rewards):
-            rewa.plot(r, label=i)
-        rewa.legend()
+#     # rando needs different way to show rewards
+#     # show both heuristic and exact rewards
+#     # TODO Consider if we want to save heuristic and exact on the same or just 1 for simplicity
+#     # TODO like [arms, heur/exac] as the subplot layout
+#     if bdt == "0":
+#         # fig2, (heur, exac) = plt.subplots(1,2, sharey=True)
+#         for i,h_e in enumerate(per_rewards):
+#             heur.plot([h for h,_ in h_e], label=i)
+#             exac.plot([e for _,e in h_e], label=i)
+#         heur.title.set_text("Heuristic")
+#         exac.title.set_text("Exact")
+#         heur.legend()
+#         exac.legend()
+#     else:
+#         for i,r in enumerate(per_rewards):
+#             rewa.plot(r, label=i)
+#         rewa.legend()
 
-    if save:
-        pass
+#     if save:
+#         pass
 
-    if show:
-        plt.show()
+#     if show:
+#         plt.show()

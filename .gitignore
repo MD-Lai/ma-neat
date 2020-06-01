@@ -2,9 +2,11 @@
 *.pickle
 results/
 spartan/
+processed/
 *.slurm
 *.svg
 *.png
+bipedal_v3/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
