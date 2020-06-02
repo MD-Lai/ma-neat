@@ -1,10 +1,11 @@
 import pickle
 import os
+import sys
 
 import numpy as np
 import matplotlib.pyplot as plt
-from scipy import stats
-from numpy import median
+from scipy.stats import kruskal, mannwhitneyu
+from numpy import median, mean
 import pandas as pd
 from math import ceil
 
@@ -169,51 +170,56 @@ def plot_and_save_iplds():
         plot_iplds(ti, labels=labs, title=f"Generations and Peak Fitness Test:{test_names[i]}", x_axis="Generations", y_axis="Peak Fitness", save_file=f"processed/gen_peak_{i}")
 
 
-def calc_p_vals(base, *models):
+def calc_p_vals(base, *models, alt=""):
     ps = []
 
     for m in models:
-        try:
-            p = stats.kruskal(base, m)[1]
-        except ValueError as v:
-            p = 1
-        finally:
-            ps.append(p)
+        # test base < m 
+        # if 
+        _,p = mannwhitneyu(base, m, alternative=alt) 
+        ps.append(p)
 
     return ps
 
-def show_p_vals():
+def show_p_vals(rel):
     offs = (250,0,0,0,0,0,8000)
-    ts = iplds_tsts_bdts_runs((0,7),(0,7),(0,32),20, offs, 1)
+    if rel:
+        ts = iplds_tsts_bdts_runs((0,7),(0,7),(0,32),20, offs, 0.97)
+        with open("ts.pickle", "wb") as t:
+            pickle.dump(ts, t)
+    else:
+        with open("ts.pickle", "rb") as t:
+            ts = pickle.load(t)
+
     labs = ["Base", "N-Prob", "H-Prob", "N-Eps", "H-Eps", "N-TS", "H-TS"]
     test_names = ["Pendulum_v0","BipedalWalker_v3","BipedalWalkerHardcore_v3","LunarLanderContinuous_v2","Banknote_Auth","Wine_Quality","MNIST"]
     pv_gens_all= []
     pv_fits_all= []
-    gens_median_all = []
-    fits_median_all = []
+    gens_mean_all = []
+    fits_mean_all = []
     for t in ts:
         gens_curr = []
         fits_curr = []
-        gens_median = []
-        fits_median = []
+        gens_mean = []
+        fits_mean = []
         for b in t:
             g,f,_,_ = zip(*b)
             gens_curr.append(g)
             fits_curr.append(f)
-            gens_median.append( median(g) )
-            fits_median.append( median(f) )
+            gens_mean.append( mean(g) )
+            fits_mean.append( mean(f) )
             
-        gens_median_all.append(gens_median)
-        fits_median_all.append(fits_median)
+        gens_mean_all.append(gens_mean)
+        fits_mean_all.append(fits_mean)
         
-        pv_gens = calc_p_vals(gens_curr[0], *gens_curr)
-        pv_fits = calc_p_vals(fits_curr[0], *fits_curr)
+        pv_gens = calc_p_vals(gens_curr[0], *gens_curr, alt="greater") # base > models = H1 
+        pv_fits = calc_p_vals(fits_curr[0], *fits_curr, alt="greater") # base < models = H1
 
         pv_gens_all.append(pv_gens)
         pv_fits_all.append(pv_fits)
     
     dts = pd.DataFrame()
-    for i, (g, f, gm, fm) in enumerate(zip(pv_gens_all, pv_fits_all, gens_median_all, fits_median_all)):
+    for i, (g, f, gm, fm) in enumerate(zip(pv_gens_all, pv_fits_all, gens_mean_all, fits_mean_all)):
         # print(f"{test_names[i]} Gens p")
 
         dt = pd.DataFrame()
@@ -222,15 +228,15 @@ def show_p_vals():
         for l,gl,fl,gml,fml in zip(labs, g,f,gm,fm):
             if not l=='Base':
 
-                dt[f'median_g_{l}'] = [f'{ceil(gml)} ({gl:.2f})'] if gl > 0.01 else [f'{ceil(gml)} (<0.01)'] #[gml]
+                dt[f'mean_g_{l}'] = [f'{ceil(gml)} ({gl:.2f})'] if gl > 0.01 else [f'{ceil(gml)} (<0.01)'] #[gml]
                 # dt['diff_g'] = [g-gm[0] for g in gm]
                 # dt[f'p_g_{l}'] = [gl]
-                dt[f'median_f_{l}'] = [f'{fml:.2f} ({fl:.2f})'] if fl > 0.01 else [f'{fml:.2f} (<0.01)'] # [fml]
+                dt[f'mean_f_{l}'] = [f'{fml:.2f} ({fl:.2f})'] if fl > 0.01 else [f'{fml:.2f} (<0.01)'] # [fml]
                 # dt['diff_f'] = [f-fm[0] for f in fm]
                 # dt[f'p_f_{l}'] = [fl]
             else:
-                dt[f'median_g_{l}'] = [f'{ceil(gml)}'] #[gml]
-                dt[f'median_f_{l}'] = [f'{fml:.2f}']
+                dt[f'mean_g_{l}'] = [f'{ceil(gml)}'] #[gml]
+                dt[f'mean_f_{l}'] = [f'{fml:.2f}']
         #dts = pd.concat([dts, dt], axis=1)
 
         dts = dts.append(dt)
@@ -239,5 +245,6 @@ def show_p_vals():
     
 # TODO it would be great if we can see the bandits at every generation, generate rewards, plays, arms graphs. 
 if __name__=="__main__":
-    show_p_vals()
+    _, rel = sys.argv
+    show_p_vals(bool(int(rel)))
 
