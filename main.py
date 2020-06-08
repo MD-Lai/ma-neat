@@ -1,5 +1,5 @@
 import multiarm
-import bandit4
+import bandit5
 import informer
 
 import neat
@@ -11,8 +11,8 @@ from tqdm import tqdm
 # import tests
 # Continuous
 import env_Pendulum_v0
-import env_BipedalWalker_v2
-import env_BipedalWalkerHardcore_v2
+import env_BipedalWalker_v3
+import env_BipedalWalkerHardcore_v3
 import env_LunarLanderContinuous_v2
 
 # Classifiers
@@ -24,8 +24,8 @@ tests = [
     cls_wine,
     cls_banknote,
     env_Pendulum_v0,
-    env_BipedalWalker_v2,
-    env_BipedalWalkerHardcore_v2,
+    env_BipedalWalker_v3,
+    env_BipedalWalkerHardcore_v3,
     env_LunarLanderContinuous_v2
 ]
 def main():

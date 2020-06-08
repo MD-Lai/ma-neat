@@ -1,5 +1,5 @@
 import multiarm
-import bandit4
+import bandit5
 import informer
 
 import neat
@@ -53,20 +53,38 @@ def run(ban, tst, test_id, gens=200):
         fit_func = t.eval_genomes
         cfg_file = t.cfg
 
+        # if ban == 0:
+        #     bandit = bandit4.RandomMutator(rates=[0.2, 0.1, 0.8, 0.5, 0.2, 0.9], single=True)
+        # elif ban == 1:
+        #     bandit = bandit4.ProbMutator(rates=[0.2, 0.1, 0.8, 0.5, 0.2, 0.9], single=True)
+        # elif ban == 2:
+        #     bandit = bandit4.HProbMutator(rates=[0.2, 0.1, 0.8, 0.5, 0.2, 0.9], single=True)
+        # elif ban == 3:
+        #     bandit = bandit4.EpsMutator()
+        # elif ban == 4:
+        #     bandit = bandit4.HEpsMutator()
+        # elif ban == 5:
+        #     bandit = bandit4.TSMutator()
+        # elif ban == 6:
+        #     bandit = bandit4.HTSMutator()
+        # else:
+        #     print(f"No bandit defined for {ban}")
+        #     exit()
+
         if ban == 0:
-            bandit = bandit4.RandomMutator(rates=[0.2, 0.1, 0.8, 0.5, 0.2, 0.9], single=True)
+            bandit = bandit5.RandomMutator([0.3, 0.05, 0.8, 0.5, 0.1, 0.9], plays=[1])
         elif ban == 1:
-            bandit = bandit4.ProbMutator(rates=[0.2, 0.1, 0.8, 0.5, 0.2, 0.9], single=True)
+            bandit = bandit5.ProbMutator()
         elif ban == 2:
-            bandit = bandit4.HProbMutator(rates=[0.2, 0.1, 0.8, 0.5, 0.2, 0.9], single=True)
+            bandit = bandit5.HProbMutator()
         elif ban == 3:
-            bandit = bandit4.EpsMutator()
+            bandit = bandit5.EpsMutator()
         elif ban == 4:
-            bandit = bandit4.HEpsMutator()
+            bandit = bandit5.HEpsMutator()
         elif ban == 5:
-            bandit = bandit4.TSMutator()
+            bandit = bandit5.TSMutator()
         elif ban == 6:
-            bandit = bandit4.HTSMutator()
+            bandit = bandit5.HTSMutator()
         else:
             print(f"No bandit defined for {ban}")
             exit()

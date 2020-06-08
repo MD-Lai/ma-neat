@@ -3,6 +3,7 @@
 results/
 spartan/
 processed/
+test/
 *.slurm
 *.svg
 *.png

@@ -1,9 +1,10 @@
 import multiarm
-import bandit4
+import bandit5
 import informer
 
 import neat
 import visualize
+import random
 
 import pickle
 from tqdm import tqdm
@@ -11,25 +12,25 @@ from tqdm import tqdm
 # import tests
 # Continuous
 import env_Pendulum_v0
-import env_BipedalWalker_v2
-import env_BipedalWalkerHardcore_v2
+import env_BipedalWalker_v3
+import env_BipedalWalkerHardcore_v3
 import env_LunarLanderContinuous_v2
 
 # Classifiers
-import cls_MNIST
+# import cls_MNIST
 import cls_banknote
 import cls_wine
 
 tests = [
+    env_Pendulum_v0,
+    env_BipedalWalker_v3,
+    env_BipedalWalkerHardcore_v3,
+    env_LunarLanderContinuous_v2,
     cls_wine,
     cls_banknote,
-    env_Pendulum_v0,
-    env_BipedalWalker_v2,
-    env_BipedalWalkerHardcore_v2,
-    env_LunarLanderContinuous_v2
 ]
 def main():
-    run(eval_genomes, cls_wine.cfg, "test", "1", gens=20)
+    run(env_Pendulum_v0.eval_genomes, env_Pendulum_v0.cfg, "test", "1", gens=200)
     # for i in tqdm(range(50)):
     #     for t in tqdm(tests):
     #         run(t.eval_genomes, t.cfg, test=f"{t.name}", test_id=f"{i}", gens=200)
@@ -41,15 +42,15 @@ def main():
             
 def eval_genomes(genomes, config):
     for genome_id, genome in genomes:
-        genome.fitness = genome_id
+        genome.fitness = random.random()
 
 def run(fit_func, cfg_file, test="", test_id="", gens=200):
 
     bandits = [
-        bandit4.RandomMutator(rates=[0.2, 0.1, 0.8, 0.5, 0.2, 0.9], single=True),
-        bandit4.PrMutator(rates=[0.2, 0.1, 0.8, 0.5, 0.2, 0.9], single=True),
-        bandit4.EpsMutator(),
-        bandit4.TSMutator()
+        bandit5.RandomMutator(rates=[0.2, 0.1, 0.6, 0.5, 0.2, 0.9], single=True),
+        bandit5.HProbMutator(single=True),
+        bandit5.EpsMutator(),
+        bandit5.TSMutator()
     ]
 
     infos = []

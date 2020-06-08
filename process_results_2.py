@@ -9,6 +9,8 @@ from numpy import median, mean
 import pandas as pd
 from math import ceil
 
+import visualize
+
 # Need to track generations to completion, max fitness reached. 
 
 def make_dir(tst, bdt):
@@ -90,9 +92,9 @@ def ind_peak_line_dist_perc(series, peak_scale, offset):
     i, p = max(enumerate(series), key=lambda x: x[1])
     return i,p,p, ( sum( [(x_i-max(series)) ** 2 for x_i in series] ) / ( len(series)-1) )**0.5
 
-def demonstrate_cutoff(tst, bdt, run, window, peak_scale, offset):
+def demonstrate_cutoff(tst, bdt, run, window, peak_scale, offset, show=False):
     tst_names=["Pendulum_v0","BipedalWalker_v3","BipedalWalkerHardcore_v3","LunarLanderContinuous_v2","Banknote_Auth","Wine_Quality","MNIST"]
-    bdt_names=["Base","N_Prob","H_Prob","N_Eps","H_Eps","N_TS","H_TS"]
+    bdt_names=["Base","N-Prob","H-Prob","N-Eps","H-Eps","N-TS","H-TS"]
     _,f,_,_ = get_fitness(tst, bdt, run)
     f = smooth_series(f, window)
     i,p,l,d = ind_peak_line_dist_perc(f, peak_scale, offset)
@@ -100,17 +102,30 @@ def demonstrate_cutoff(tst, bdt, run, window, peak_scale, offset):
     plt.close('all')
     fig, ax = plt.subplots()
     ax.grid()
-    ax.set_title(f"Test:{tst_names[tst]} Bandit:{bdt_names[bdt]} Run:{run}")
+    ax.set_title(f"Cutoff Test:{tst_names[tst]} Bandit:{bdt_names[bdt]} Run:{run}")
     ax.plot(range(len(f)), f, label=f"Smoothed Fitness (window={window})")
     ax.plot(range(200), [l for _ in range(200)],label=f"{peak_scale:.2f}x Peak Fitness={l:.2f}")
     ax.scatter([i],[p], label=f"Selected Point : (Gens,Fit)=({i},{p:.2f})", marker='o', c="red")
-    ax.set_xlim(0,200)
-    ax.set_ylim(-30,25)
+    # ax.set_xlim(0,200)
+    # ax.set_ylim(-30,25)
     ax.set_ylabel("Fitness")
     ax.set_xlabel("Generation")
     ax.legend(loc="lower right")
-    plt.show()
-    fig.savefig(f"Test_{tst_names[tst]} Bandit_{bdt_names[bdt]} Run_{run}")
+    if show:
+        plt.show()
+    fig.savefig(f"processed/test_{tst}_{bdt}/cutoff_{tst}_{bdt}_{run}")
+    # fig.savefig(f"Test_{tst_names[tst]} Bandit_{bdt_names[bdt]} Run_{run}")
+
+def plot_and_save_cutoffs(figsize):
+    offs = (250,0,0,0,0,0,8000)
+    tsts = range(0,7)
+    bdts = range(0,7)
+    runs = range(0,32)
+    
+    for off, tst in zip(offs, tsts):
+        for bdt in bdts:
+            for run in runs:
+                demonstrate_cutoff(tst, bdt, run, 20, 0.97, off)
 
 def iplds_runs(tst, bdt, runs, window, peak_scale=1, offset=0):
     gbam = get_test_fitnesses(tst, bdt, runs)
@@ -130,14 +145,18 @@ def iplds_bdts_runs(tst, bdts, runs, window, offset, peak_scale=1):
 def iplds_tsts_bdts_runs(tsts, bdts, runs, window, offsets, peak_scale=1):
     return [iplds_bdts_runs(t, bdts, runs, window, offsets[t], peak_scale) for t in range(*tsts)]
 
-def plot_iplds(iplds, labels=None, markers=None, title="", x_axis="", y_axis="", figsize=(16,9),show=True, save_file=None): # flesh out to include labels
+def plot_iplds(iplds, labels=None, markers=None, title="", x_axis="", y_axis="", figsize=None,show=True, save_file=None): # flesh out to include labels
     plt.close('all')
     if labels is None:
         labels = [i for i in range(len(iplds))]
     if markers is None:
         markers = ["." for i in range(len(iplds))]
 
-    fig, ax = plt.subplots(figsize=figsize)
+    if figsize is not None:
+        fig, ax = plt.subplots(figsize=figsize)
+    else: 
+        fig, ax = plt.subplots()
+
     ax.set_title(title)
     ymin = float("inf")
     for ipld, lab, mar in zip(iplds, labels, markers):
@@ -161,13 +180,13 @@ def plot_iplds(iplds, labels=None, markers=None, title="", x_axis="", y_axis="",
     
     plt.close('all')
 
-def plot_and_save_iplds():
+def plot_and_save_iplds(figsize):
     offs = (250,0,0,0,0,0,8000)
     ts = iplds_tsts_bdts_runs((0,7),(0,7),(0,32),20, offs, 0.97)
     labs = ["Base", "N-Prob", "H-Prob", "N-Eps", "H-Eps", "N-TS", "H-TS"]
     test_names = ["Pendulum_v0","BipedalWalker_v3","BipedalWalkerHardcore_v3","LunarLanderContinuous_v2","Banknote_Auth","Wine_Quality","MNIST"]
     for i, ti in enumerate(ts):
-        plot_iplds(ti, labels=labs, title=f"Generations and Peak Fitness Test:{test_names[i]}", x_axis="Generations", y_axis="Peak Fitness", save_file=f"processed/gen_peak_{i}")
+        plot_iplds(ti, labels=labs, title=f"Generations and Selected Fitness Test:{test_names[i]}", x_axis="Generations", y_axis="Selected Fitness",figsize=figsize, save_file=f"processed/gen_peak_{i}")
 
 
 def calc_p_vals(base, *models, alt=""):
@@ -241,9 +260,178 @@ def show_p_vals(rel):
 
         dts = dts.append(dt)
     print(dts)
-    dts.to_csv("Results.csv", index=False)
+    dts.to_csv("Results_mannwhitu.csv", index=False)
+
+def show_p_vals_krusk(rel):
+    offs = (250,0,0,0,0,0,8000)
+    if rel:
+        ts = iplds_tsts_bdts_runs((0,7),(0,7),(0,32),20, offs, 0.97)
+        with open("ts.pickle", "wb") as t:
+            pickle.dump(ts, t)
+    else:
+        with open("ts.pickle", "rb") as t:
+            ts = pickle.load(t)
+    labs = ["Base", "N-Prob", "H-Prob", "N-Eps", "H-Eps", "N-TS", "H-TS"]
+    test_names = ["Pendulum_v0","BipedalWalker_v3","BipedalWalkerHardcore_v3","LunarLanderContinuous_v2","Banknote_Auth","Wine_Quality","MNIST"]
+    pv_gens_all= []
+    pv_fits_all= []
+    gens_mean_all = []
+    fits_mean_all = []
+    for t in ts:
+        gens_curr = []
+        fits_curr = []
+        gens_mean = []
+        fits_mean = []
+        for b in t:
+            g,f,_,_ = zip(*b)
+            gens_curr.append(g)
+            fits_curr.append(f)
+            gens_mean.append( mean(g) )
+            fits_mean.append( mean(f) )
+            
+        gens_mean_all.append(gens_mean)
+        fits_mean_all.append(fits_mean)
+        
+        _, pv_gens = kruskal(*gens_curr) # base > models = H1 
+        _, pv_fits = kruskal(*fits_curr) # base < models = H1
+
+        pv_gens_all.append(pv_gens)
+        pv_fits_all.append(pv_fits)
+    
+    dts = pd.DataFrame()
+    for i, (g, f, gm, fm) in enumerate(zip(pv_gens_all, pv_fits_all, gens_mean_all, fits_mean_all)):
+        # print(f"{test_names[i]} Gens p")
+
+        dt = pd.DataFrame()
+        dt['test_name'] = [test_names[i]]
+        dt['p_value_g'] = [g]
+        dt['p_value_f'] = [f]
+
+        dts = dts.append(dt)
+    print(dts)
+    dts.to_csv("Results_kruskal.csv", index=False)
     
 # TODO it would be great if we can see the bandits at every generation, generate rewards, plays, arms graphs. 
+def plot_bdt(tst, bdt, run, show=False):
+    winner, stats, b_stats, config = open_test(tst, bdt, run)
+    
+    #ov = overall
+    arms, rewards, counts, gen_bests, gen_worsts, ov_bests, ov_worsts = list(zip(*b_stats.generational_data))
+    arms = list(zip(*arms))
+    rewards = list(zip(*rewards))
+    counts = list(zip(*counts))
+
+    labs = ["Base", "N-Prob", "H-Prob", "N-Eps", "H-Eps", "N-TS", "H-TS"]
+    test_names = ["Pendulum_v0","BipedalWalker_v3","BipedalWalkerHardcore_v3","LunarLanderContinuous_v2","Banknote_Auth","Wine_Quality","MNIST"]
+    arm_legend = ["node+", "node-", "node~", "conn+", "conn-", "conn~"]
+
+
+    if bdt == 5 or bdt == 6:
+        arms_temp = []
+        for arm in arms:
+            # print(arm)
+            arm_t = [0 if s+f == 0 else s/(s+f) for s,f in arm]
+            # print(arm_t)
+            arms_temp.append(arm_t)
+        arms = arms_temp
+    
+    fig = plt.figure(figsize=(10,6))
+
+    if bdt == 0:
+        ax_arm = fig.add_subplot(131)
+        # heuristic numerical
+        ax_rewh = fig.add_subplot(133)
+        ax_rewn = fig.add_subplot(132, sharey=ax_rewh)
+        for i,rhn in enumerate(rewards):
+            ax_rewh.plot([r[0] for r in rhn], label=arm_legend[i])
+            ax_rewn.plot([r[1] for r in rhn], label=arm_legend[i])
+
+        ax_rewn.set_title("Rewards (Numeric)")
+        ax_rewn.set_xlabel("Generations")
+        ax_rewn.set_ylabel("Cumulative Reward")
+        ax_rewn.legend(loc="upper left")
+        ax_rewn.grid()
+
+        ax_rewh.set_title("Rewards (Heuristic)")
+        ax_rewh.set_xlabel("Generations")
+        ax_rewh.set_ylabel("Cumulative Reward")
+        ax_rewh.legend(loc="upper left")
+        ax_rewh.grid()
+
+        fig.tight_layout(rect=[0, 0.03, 1, 0.95], pad=1.0)
+
+    else:
+        ax_arm = fig.add_subplot(121)
+        ax_rew = fig.add_subplot(122)
+        for i,r in enumerate(rewards):
+            ax_rew.plot(r, label=arm_legend[i])
+        ax_rew.set_title("Rewards")
+        ax_rew.set_xlabel("Generations")
+        ax_rew.set_ylabel("Cumulative Reward")
+        ax_rew.legend(loc="upper left")
+        ax_rew.grid()
+
+    for i,a in enumerate(arms):
+        ax_arm.plot(a, label=arm_legend[i])
+    add = " (mean)" if bdt == 5 or bdt == 6 else ""
+    ax_arm.set_title(f"Arm Values{add}")
+    ax_arm.set_xlabel("Generations")
+    ax_arm.set_ylabel("Arm Value")
+    ax_arm.legend(loc="upper left")
+    ax_arm.grid()
+    
+    fig.suptitle(f"Bandit's Arms and Rewards over Generations Test:{test_names[tst]} Bandit:{labs[bdt]} Run:{run}")
+    if show:
+        plt.show()
+
+    fig.savefig(f"processed/test_{tst}_{bdt}/bandit_{tst}_{bdt}_{run}")
+    plt.close()
+    plays_fig = plt.figure()
+    plays = plays_fig.add_subplot(111)
+    plays.set_title(f"Bandit Arms Play Count Test:{test_names[tst]} Bandit:{labs[bdt]} Run:{run}")
+    for i,c in enumerate(counts):
+        plays.plot(c, label=arm_legend[i])
+    plays.legend()
+    plays.set_xlabel("Generations")
+    plays.set_ylabel("Play Count")
+    if show:
+        plt.show()
+    plays_fig.savefig(f"processed/test_{tst}_{bdt}/banditcount_{tst}_{bdt}_{run}")
+    plt.close()
+
+def plot_all_bdt():
+    tsts = range(0,7)
+    bdts = range(0,7)
+    runs = range(0,32)
+    
+    for tst in tsts:
+        for bdt in bdts:
+            for run in runs:
+                plot_bdt(tst,bdt,run)
+
+# TODO view the top 5 or so genomes throughout evolution
+def view_top_n_networks(tst, bdt, run, n):
+    winner, stats, b_stats, config = open_test(tst, bdt, run)
+    top_n = [winner]
+    top_n += stats.best_unique_genomes(n)
+    
+    for i, net in enumerate(top_n):
+        file_prefix = f"processed/test_{tst}_{bdt}/net_{tst}_{bdt}_{run}_"
+        filename = file_prefix + ("winner" if i == 0 else f"{i}")
+        # print(filename)
+        visualize.draw_net(config, net, view=False, filename=filename, show_disabled=True, fmt='png')
+        os.remove(filename)
+
+def view_all_test_networks():
+    tsts = range(0,7)
+    bdts = range(0,7)
+    runs = range(0,32)
+    
+    for tst in tsts:
+        for bdt in bdts:
+            for run in runs:
+                view_top_n_networks(tst,bdt,run,5)
+
 if __name__=="__main__":
     _, rel = sys.argv
     show_p_vals(bool(int(rel)))

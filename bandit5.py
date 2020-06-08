@@ -5,7 +5,7 @@ import sys
 from itertools import combinations
 from numpy.random import beta, choice
 from numpy import median
-from math import log
+from math import log, exp
 from statistics import mean
 
 import matplotlib.pyplot as plt
@@ -20,6 +20,12 @@ import helper
 # TODO update just updates score of given arm
 # TODO make reward aggregate selectable somehow
 
+"""
+this is a stupid and needlessly complicated system, just do play and update next time
+pre_play and rate_arms is so useless and complicated to accomodate all bandits.
+I don't even think it can work as a normal bandit thanks to the update scheme 
+"""
+
 class AbstractMutator(ABC):
 
     """
@@ -30,6 +36,7 @@ class AbstractMutator(ABC):
         update(self, arm, rewards)
 
     Optional:
+        pre_play(self,t)
         render_arm(self, i): return string_representing_arm
     """
     @abstractmethod
@@ -47,6 +54,8 @@ class AbstractMutator(ABC):
         self.arms, self.rewards, self.n = self._arms_init(*args, **kwargs)
 
         self.counts = [0] * len(self.arms)
+
+        self.gens = 0
     
     @abstractmethod
     def _arms_init(self, *args, **kwargs):
@@ -75,16 +84,16 @@ class AbstractMutator(ABC):
         self.pre_play(t)
         # Generate rating for all arms, <0 indicates don't consider arm
         arm_ratings = [self.rate_arm(i, a, t) for i,a in enumerate(self.arms)]
-        # Scale s.t. sum of ratings is 1 but 
-        # rank arm indices according to ratings, ignoring arms <0
-        shuffle_arm = list(range(len(self.arms)))
-        random.shuffle(shuffle_arm)
-        viable_arms = [i for i in shuffle_arm if arm_ratings[i] >= 0]
-        rankings = sorted(viable_arms, key=lambda i: arm_ratings[i])
-        # Select top n arms, shuffle to reduce biases due to playing order
-        n = random.choice(self.n)
-        plays = rankings[:n]
-        random.shuffle(plays)
+        # normalise arm ratings s.t. it sums to 1
+        arm_sum = sum(arm_ratings)
+        arm_ratings = [1/len(self.arms) if arm_sum == 0 else a/arm_sum for a in arm_ratings]
+        # print(arm_ratings)
+        # select i's weighted on arm ratings
+        # also randomly select n plays
+        n = choice(self.n)
+        plays = choice(range(len(self.arms)), size=n, replace=False, p=arm_ratings)
+        
+        # print(plays)
 
         # Update number of plays 
         for a in plays:
@@ -94,6 +103,7 @@ class AbstractMutator(ABC):
     
     # Called once per generation
     def update_all(self, mu_de):
+        self.gens += 1
         self.gen_best = max(mu_de, key=lambda m_d: m_d[1])
         self.gen_worst = min(mu_de, key=lambda m_d: m_d[1])
 
@@ -192,39 +202,13 @@ class RandomMutator(AbstractMutator):
     # Return [arms], [rewards], [n] 
     # where [n] is list of n_plays, chosen randomly uniformly
     # Can also define any args as necessary
-    def _arms_init(self, rates, plays=None, single=False):
-        if plays is None:
-            plays = [len(rates)]
-
-        if single:
-            plays = [1]
-
-        self.single = single
-        self.single_arm = -1
-
-        if single:
-            t = sum(rates)
-            rates = [a/t for a in rates]
-        rewards = [(0,0)] * len(rates)
+    def _arms_init(self, rates, plays=[1]):
+        rewards = [(0,0) for _ in range(len(rates))]
         return rates, rewards, plays
 
-    # Optional: perform any calculations prior to rating arms
-    def pre_play(self, t):
-        if self.single:
-            # pre-select the single arm to play
-            r = random.random()
-            s = 0 
-            for i,a in enumerate(self.arms):
-                s += a 
-                if r < s: 
-                    self.single_arm = i
-                    break
-
     # Rate a given arm, indexed with i, value of arm a, and time t
-    def rate_arm(self, i, a, t):
-        if self.single:
-            return 1 if i == self.single_arm else -1
-        return 1 if random.random() < a else -1
+    def rate_arm(self, i, a, t): 
+        return a
 
     # Update given index and reward list
     def update(self, i, rewards):
@@ -248,50 +232,37 @@ class RandomMutator(AbstractMutator):
 class HProbMutator(AbstractMutator):
     # Rewards: (len(+ve), len(rewards))
     def simple_name(self):
-        return "HProb"
+        return "H-Prob"
 
     # Return [arms], [rewards], [n] 
     # where [n] is list of n_plays, chosen randomly uniformly
     # Can also define any args as necessary
-    def _arms_init(self, rates, plays=None, lr=1, single=False):
+    def _arms_init(self, rates=[0,0,0,0,0,0], plays=[1], lr=0.1):
         # Recommend plays to be left as is, otherwise arms are unfairly selected
-        if plays is None:
-            plays = [len(rates)]
-
-        if single:
-            plays = [1]
 
         self.lr = lr
 
-        self.single = single
         self.single_arm = -1
 
-        if single:
-            t = sum(rates)
-        else:
-            t = max(rates)
+        a = [exp(r/self.lr) for r in rates]
+        a_s = sum(a)
+        arms = [a/a_s for a in a]
 
-        rates = [a/t for a in rates]
-        return rates, [0] * len(rates), [1] if single else plays
+        # e^(avg(reward)/tau)
+
+        return arms, [0] * len(arms), plays
 
     # Optional: perform any calculations prior to rating arms
     def pre_play(self, t):
-        # Adjust arms to max
-        if self.single:
-            # pre-select the single arm to play
-            r = random.random()
-            s = 0 
-            for i,a in enumerate(self.arms):
-                s += a 
-                if r < s: 
-                    self.single_arm = i
-                    return
+        # e^(avg(reward)/tau)
+        if t > 0:
+            a = [exp((r/t)/self.lr) for r in self.rewards]
+            a_s = sum(a)
+            self.arms = [a/a_s for a in a]
             
     # Rate a given arm, indexed with i, value of arm a, and time t
     def rate_arm(self, i, a, t):
-        if self.single:
-            return 1 if i == self.single_arm else -1
-        return 1 if random.random() < a else -1
+        return a
 
     # Update given index and reward list
     def update(self, i, rewards):
@@ -299,65 +270,55 @@ class HProbMutator(AbstractMutator):
         range_c = len(rewards)
         ratio = pos_c/range_c
 
-        self.arms[i] += (ratio - self.arms[i]) * self.lr
+        # TODO
+        # self.arms[i] += (ratio - self.arms[i]) * self.lr
         
         self.rewards[i] += ratio
-
-    def post_update(self):
-        if self.single:
-            # Adjust arms to total sum
-            t = sum(self.arms)
-            self.arms = [a/t for a in self.arms]
-
-        else:
-            t = max(self.arms)
-            self.arms = [a/t for a in self.arms]
+    
 
     # Optional but recommended: How to print an arm
     # Given index, arm, count
     def render_arm(self, i, a, c):
-        return "pr: {} +/all: {} p: {}".format(a, self.rewards[i], c)
+        return "pr: {} +ve/all: {} p: {}".format(a, self.rewards[i], c)
 
 class ProbMutator(HProbMutator):
     # Rewards: (sub(+ve), sum(abs(rewards)))
     def simple_name(self):
-        return "Prob"
+        return "N-Prob"
     
     def update(self, i, rewards):
-        try:
-            pos_r = sum(r for r in rewards if r > 0)
-            range_r = sum(abs(r) for r in rewards)
+        pos_r = sum(r for r in rewards if r > 0)
+        range_r = sum(abs(r) for r in rewards)
 
-            ratio = pos_r/range_r
+        ratio = pos_r/range_r
 
-            self.arms[i] += (ratio - self.arms[i]) * self.lr
-
-            self.rewards[i] += ratio
-        except Exception as e:
-            print(rewards)
-            raise e
+        self.rewards[i] += ratio
 
 class EpsMutator(AbstractMutator):
     # Rewards: sum(+ve)/sum(abs(rewards))
     def simple_name(self):
-        return "Eps"
+        return "N-Eps"
     # Return [arms], [rewards], [n] 
     # where [n] is list of desired n, chosen randomly uniformly
     # Can also define any args as necessary
     def _arms_init(self, a_0=[0,0,0,0,0,0], eps=0.2, plays=[1]):
         self.eps = eps
         self.exp = False
-        return a_0, [0] * len(a_0), plays
+        self.arm_max = 0
+        arm = [a for a in a_0]
+        return arm, [0] * len(arm), plays
 
     # Optional: perform any calculations prior to rating arms such as pre-choosing
     def pre_play(self, t):
         self.exp = random.random() < self.eps
-    
+        for i,r in enumerate(self.rewards):
+            self.arms[i] = r/(t+1)
+
     # Rate a given arm, indexed with i, value of arm a, and time t
     def rate_arm(self, i, a, t):
         if self.exp:
             return 1
-        return a
+        return 1 if a == max(self.arms) else 0
     
     # Update given index and reward list
     def update(self, i, rewards):
@@ -365,7 +326,7 @@ class EpsMutator(AbstractMutator):
         range_r = sum(abs(r) for r in rewards)
         ratio = pos_r/range_r
 
-        self.arms[i] += ratio
+        # self.arms[i] += ratio
         
         self.rewards[i] += ratio
         # # Reward arm i with some function of rewards
@@ -375,34 +336,43 @@ class EpsMutator(AbstractMutator):
         # self.arms[i] += max(0,r)
         # self.rewards[i] += r
 
+    def post_update(self):
+        print(self.arms)
+
 class HEpsMutator(EpsMutator):
     # Rewards: len(+ve)/len(rewards)
     def simple_name(self):
-        return "HEps"
+        return "H-Eps"
     # Update given index and reward list
     def update(self, i, rewards):
         pos_r = len([r for r in rewards if r > 0])
         range_r = len(rewards)
         ratio = pos_r/range_r
 
-        self.arms[i] += ratio
+        # self.arms[i] += ratio
         self.rewards[i] += ratio
 
 class HTSMutator(AbstractMutator):
     # Rewards: len(+ve)/len(rewards)
     def simple_name(self):
-        return "HTS"
+        return "H-TS"
 
     # Return [arms], [rewards], [n] 
     # where [n] is list of n_plays, chosen randomly uniformly
     # Can also define any args as necessary
     def _arms_init(self, a_0=[(0,0),(0,0),(0,0),(0,0),(0,0),(0,0)], plays=[1]):
+        self.eligible = -1
         return a_0, [0] * len(a_0), plays 
+
+    def pre_play(self, t):
+        samples = [(a,beta(s+1, f+1)) for a,(s,f) in enumerate(self.arms)]
+        a, _ = max(samples, key=lambda ab: ab[1])
+        self.eligible = a
+        
     
     # Rate a given arm, indexed with i, value of arm a, and time t
     def rate_arm(self, i, a, t):
-        s,f = self.arms[i]
-        return beta(s+1, f+1)
+        return 1 if i == self.eligible else 0
     
     # Update given index and reward list
     def update(self, i, rewards):
@@ -426,7 +396,7 @@ class HTSMutator(AbstractMutator):
 class TSMutator(HTSMutator):
     # Rewards: sum(+ve)/sum(abs(rewards))
     def simple_name(self):
-        return "TS"
+        return "N-TS"
     # Update given index and reward list
     def update(self, i, rewards):
         s,f = self.arms[i]

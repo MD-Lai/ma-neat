@@ -12,7 +12,7 @@ species_elitism      = 3
 
 [BanditReproduction]
 elitism            = 3
-survival_threshold = 0.2
+survival_threshold = 0.5
 min_species_size   = 4
 
 [DefaultSpeciesSet]

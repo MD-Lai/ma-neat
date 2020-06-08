@@ -88,7 +88,7 @@ def plot_spikes(spikes, view=False, filename=None, title=None):
     return fig
 
 
-def plot_species(statistics, view=False, filename='speciation.svg'):
+def plot_species(statistics, graph_title="", view=False, filename='speciation.svg'):
     """ Visualizes speciation throughout evolution. """
     if plt is None:
         warnings.warn("This display is not available due to a missing optional dependency (matplotlib)")
@@ -98,10 +98,10 @@ def plot_species(statistics, view=False, filename='speciation.svg'):
     num_generations = len(species_sizes)
     curves = np.array(species_sizes).T
 
-    fig, ax = plt.subplots(figsize=(16,9))
+    fig, ax = plt.subplots()
     ax.stackplot(range(num_generations), *curves)
 
-    plt.title("Speciation")
+    plt.title(graph_title)
     plt.ylabel("Size per Species")
     plt.xlabel("Generations")
 
@@ -159,7 +159,7 @@ def draw_net(config, genome, view=False, filename=None, node_names=None, show_di
         connections = set()
         for cg in genome.connections.values():
             if cg.enabled or show_disabled:
-                connections.add((cg.in_node_id, cg.out_node_id))
+                connections.add(cg.key)
 
         used_nodes = copy.copy(outputs)
         pending = copy.copy(outputs)
@@ -191,7 +191,7 @@ def draw_net(config, genome, view=False, filename=None, node_names=None, show_di
             style = 'solid' if cg.enabled else 'dotted'
             color = 'green' if cg.weight > 0 else 'red'
             width = str(0.1 + abs(cg.weight / 5.0))
-            dot.edge(a, b, _attributes={'style': style, 'color': color, 'penwidth': width})
+            dot.edge(a, b, _attributes={'label':f'{cg.weight:.3f}', 'fontsize': '8', 'style': style, 'color': color, 'penwidth': width})
 
     dot.render(filename, view=view)
 

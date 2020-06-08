@@ -52,7 +52,7 @@ def make_dir(tst, bdt):
         print ("Creation of the directory %s failed" % path)
         print (osE)
 
-def plot_fitness(tst,bdt,ind, save=True, show=False):
+def plot_fitness(tst,bdt,ind, figsize=None, save=True, show=False):
     
     pickle_file = f"spartan/test_{tst}_{bdt}/results_{tst}_{bdt}_{ind}.pickle"
 
@@ -64,12 +64,19 @@ def plot_fitness(tst,bdt,ind, save=True, show=False):
     avg_fitness = np.array(statistics.get_fitness_mean())
     median_fitness = np.array(statistics.get_fitness_median())
     
-    fig, fits = plt.subplots(figsize=(16,9))
+    if figsize is not None:
+        fig, fits = plt.subplots(figsize=(16,9))
+    else:
+        fig, fits = plt.subplots()
+
     fits.plot(generation, best_fitness, 'r-', label="best")
     # fits.plot(generation, median_fitness, 'g-', label="median")
     fits.plot(generation, avg_fitness, 'b-', label="average")
+    
+    tst_names=["Pendulum_v0","BipedalWalker_v3","BipedalWalkerHardcore_v3","LunarLanderContinuous_v2","Banknote_Auth","Wine_Quality","MNIST"]
+    bdt_names=["Base","N-Prob","H-Prob","N-Eps","H-Eps","N-TS","H-TS"]
 
-    fits.set_title(f"Population's average and best fitness {tst}.{bdt}.{ind}")
+    fits.set_title(f"Fitness Test:{tst_names[tst]} Bandit:{bdt_names[bdt]} Run:{ind}")
     fits.set_xlabel("Generations")
     fits.set_ylabel("Fitness")
     fits.grid()
@@ -84,21 +91,21 @@ def plot_fitness(tst,bdt,ind, save=True, show=False):
             print (f"Creation of the directory {path} failed")
             print (osE)
 
-        visualize.plot_species(statistics, view=False, filename=f"processed/test_{tst}_{bdt}/processed_{tst}_{bdt}_{ind}_species")
+        visualize.plot_species(statistics, graph_title=f"Speciation Test:{tst_names[tst]} Bandit:{bdt_names[bdt]} Run:{ind}", view=False, filename=f"processed/test_{tst}_{bdt}/species_{tst}_{bdt}_{ind}")
 
-        filename = f"processed/test_{tst}_{bdt}/processed_{tst}_{bdt}_{ind}_fitness"
+        filename = f"processed/test_{tst}_{bdt}/fitness_{tst}_{bdt}_{ind}"
         fig.savefig(filename)
     
     if show:
         plt.show()
     plt.close('all')
-def plot_and_save_fitnesses(tsts, bdts):
+def plot_and_save_fitnesses(tsts, bdts, figsize):
     # Assume all tests are just 0-31 for now
     for t in tsts:
         for b in bdts:
             for i in range(32):
                 make_dir(t,b)
-                plot_fitness(t,b,i,save=True,show=False)
+                plot_fitness(t,b,i,figsize=figsize, save=True,show=False)
 
 # Just imagine all bandits are exactly the same for now, 
 # add exceptions later
@@ -107,7 +114,7 @@ def plot_and_save_fitnesses(tsts, bdts):
 #     pickle_file = f"spartan/test_{tst}_{bdt}/results_{tst}_{bdt}_{ind}.pickle"
 
 #     with open(pickle_file, 'rb') as data_pickle:
-#         winner, stats, b_stats, config = pickle.load(data_pickle)
+#         winner, stats, b_stats, config = pickle.load(data_pickle)s
 
 #     arms, rewards, counts, gen_bests, gen_worsts, ov_bests, ov_worsts = list(zip(*b_stats.generational_data))
 
