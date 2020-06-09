@@ -52,6 +52,7 @@ def make_dir(tst, bdt):
         print ("Creation of the directory %s failed" % path)
         print (osE)
 
+# add point for max fitness or something
 def plot_fitness(tst,bdt,ind, figsize=None, save=True, show=False):
     
     pickle_file = f"spartan/test_{tst}_{bdt}/results_{tst}_{bdt}_{ind}.pickle"

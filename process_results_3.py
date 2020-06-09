@@ -5,7 +5,7 @@ import sys
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.stats import kruskal, mannwhitneyu
-from numpy import median, mean
+from numpy import median, mean, cumsum
 import pandas as pd
 from math import ceil
 
@@ -92,6 +92,7 @@ def ind_peak_line_dist_perc(series, peak_scale, offset):
     i, p = max(enumerate(series), key=lambda x: x[1])
     return i,p,p, ( sum( [(x_i-max(series)) ** 2 for x_i in series] ) / ( len(series)-1) )**0.5
 
+# Not really necessary anymore, needs to be "select max fitness" or something
 def demonstrate_cutoff(tst, bdt, run, window, peak_scale, offset, show=False):
     tst_names=["Pendulum_v0","BipedalWalker_v3","BipedalWalkerHardcore_v3","LunarLanderContinuous_v2","Banknote_Auth","Wine_Quality","MNIST"]
     bdt_names=["Base","N-Prob","H-Prob","N-Eps","H-Eps","N-TS","H-TS"]
@@ -104,9 +105,9 @@ def demonstrate_cutoff(tst, bdt, run, window, peak_scale, offset, show=False):
     ax.grid()
     ax.set_title(f"Cutoff Test:{tst_names[tst]} Bandit:{bdt_names[bdt]} Run:{run}")
     ax.plot(range(len(f)), f, label=f"Smoothed Fitness (window={window})")
-    ax.plot(range(200), [l for _ in range(200)],label=f"{peak_scale:.2f}x Peak Fitness={l:.2f}")
+    ax.plot(range(len(f)), [l for _ in range(len(f))],label=f"{peak_scale:.2f}x Peak Fitness={l:.2f}")
     ax.scatter([i],[p], label=f"Selected Point : (Gens,Fit)=({i},{p:.2f})", marker='o', c="red")
-    # ax.set_xlim(0,200)
+    ax.set_xlim(0,len(f))
     # ax.set_ylim(-30,25)
     ax.set_ylabel("Fitness")
     ax.set_xlabel("Generation")
@@ -186,7 +187,7 @@ def plot_and_save_iplds(figsize):
     labs = ["Base", "N-Prob", "H-Prob", "N-Eps", "H-Eps", "N-TS", "H-TS"]
     test_names = ["Pendulum_v0","BipedalWalker_v3","BipedalWalkerHardcore_v3","LunarLanderContinuous_v2","Banknote_Auth","Wine_Quality","MNIST"]
     for i, ti in enumerate(ts):
-        plot_iplds(ti, labels=labs, title=f"Generations and Selected Fitness Test:{test_names[i]}", x_axis="Generations", y_axis="Selected Fitness",figsize=figsize, save_file=f"processed/gen_peak_{i}")
+        plot_iplds(ti, labels=labs, title=f"Generations and Selected Fitness Test:{test_names[i]}", x_axis="Generations", y_axis="Selected Fitness",figsize=figsize, save_file=f"processed/gen_peak_{i}", show=False)
 
 
 def calc_p_vals(base, *models, alt=""):
@@ -316,84 +317,98 @@ def plot_bdt(tst, bdt, run, show=False):
     winner, stats, b_stats, config = open_test(tst, bdt, run)
     
     #ov = overall
-    arms, rewards, counts, gen_bests, gen_worsts, ov_bests, ov_worsts = list(zip(*b_stats.generational_data))
+    arms, rewards, counts = list(zip(*b_stats.generational_data))
     arms = list(zip(*arms))
     rewards = list(zip(*rewards))
     counts = list(zip(*counts))
 
     labs = ["Base", "N-Prob", "H-Prob", "N-Eps", "H-Eps", "N-TS", "H-TS"]
     test_names = ["Pendulum_v0","BipedalWalker_v3","BipedalWalkerHardcore_v3","LunarLanderContinuous_v2","Banknote_Auth","Wine_Quality","MNIST"]
-    arm_legend = ["node+", "node-", "node~", "conn+", "conn-", "conn~"]
+    if len(arms) == 6:
+        arm_legend = ["node+", "node-", "node~", "conn+", "conn-", "conn~"]
+    elif len(arms) == 5: # len arms == 5
+        arm_legend = ["node+", "node~", "conn+", "conn~", "cross"]
+    else:
+        arm_legend = [f"{i}" for i in range(len(arms))]
 
-
-    if bdt == 5 or bdt == 6:
-        arms_temp = []
-        for arm in arms:
-            # print(arm)
-            arm_t = [0 if s+f == 0 else s/(s+f) for s,f in arm]
-            # print(arm_t)
-            arms_temp.append(arm_t)
-        arms = arms_temp
-    
-    fig = plt.figure(figsize=(10,6))
 
     if bdt == 0:
-        ax_arm = fig.add_subplot(131)
+        # change to average, cumulative rewards 2x2, top row = numeric, bottom row = heuristic, increase graph size especially vertical height
+        fig, ((ax_rew_avgn, ax_rew_cumn), (ax_rew_avgh, ax_rew_cumh)) = plt.subplots(2,2, figsize=(12, 9), constrained_layout=True)
+        # fig = plt.figure(figsize=(10,6))
+
+        # ax_arm = fig.add_subplot(131)
         # heuristic numerical
-        ax_rewh = fig.add_subplot(133)
-        ax_rewn = fig.add_subplot(132)
-        for i,rhn in enumerate(rewards):
-            ax_rewh.plot([r[0] for r in rhn], label=arm_legend[i])
-            ax_rewn.plot([r[1] for r in rhn], label=arm_legend[i])
+        # ax_rewn = fig.add_subplot(132)
+        # ax_rewh = fig.add_subplot(133)
+        for i, (rnh,count) in enumerate(zip(rewards, counts)):
+            ax_rew_avgn.plot([rnp/(rnp+rnn or 1) for (rnp, rnn), (_,_) in rnh], label=arm_legend[i])
+            ax_rew_cumn.plot([rnp/(rnp+rnn or 1) * c for ((rnp, rnn), (_,_)), c in zip(rnh, count)], label=arm_legend[i])
+            
+            ax_rew_avgh.plot([rhp/(rhp+rhn or 1) for (_,_), (rhp, rhn) in rnh], label=arm_legend[i])
+            ax_rew_cumh.plot([rhp/(rhp+rhn or 1) * c for ((_, _), (rhp, rhn)), c in zip(rnh, count)], label=arm_legend[i])
 
-        ax_rewn.set_title("Rewards (Numeric)")
-        ax_rewn.set_xlabel("Generations")
-        ax_rewn.set_ylabel("Cumulative Reward")
-        ax_rewn.legend(loc="upper left")
-        ax_rewn.grid()
+        ax_rew_avgn.set_title("Average Rewards (Numeric)")
+        ax_rew_avgn.set_xlabel("Generations")
+        ax_rew_avgn.set_ylabel("Reward")
+        ax_rew_avgn.legend(loc="upper left")
+        ax_rew_avgn.grid()
 
-        ax_rewh.set_title("Rewards (Heuristic)")
-        ax_rewh.set_xlabel("Generations")
-        ax_rewh.set_ylabel("Cumulative Reward")
-        ax_rewh.legend(loc="upper left")
-        ax_rewh.grid()
+        ax_rew_avgh.set_title("Average Rewards (Heuristic)")
+        ax_rew_avgh.set_xlabel("Generations")
+        ax_rew_avgh.set_ylabel("Reward")
+        ax_rew_avgh.legend(loc="upper left")
+        ax_rew_avgh.grid()
 
-        fig.tight_layout(rect=[0, 0.03, 1, 0.95], pad=1.0)
+        ax_rew_cumn.set_title("Cumulative Rewards (Numeric)")
+        ax_rew_cumn.set_xlabel("Generations")
+        ax_rew_cumn.set_ylabel("Reward")
+        ax_rew_cumn.legend(loc="upper left")
+        ax_rew_cumn.grid()
+
+        ax_rew_cumh.set_title("Cumulative Rewards (Heuristic)")
+        ax_rew_cumh.set_xlabel("Generations")
+        ax_rew_cumh.set_ylabel("Reward")
+        ax_rew_cumh.legend(loc="upper left")
+        ax_rew_cumh.grid()
+
+        # fig.tight_layout(rect=[0, 0.03, 1, 0.95], pad=0)
 
     else:
-        ax_arm = fig.add_subplot(121)
-        ax_rew = fig.add_subplot(122)
-        for i,r in enumerate(rewards):
-            ax_rew.plot(r, label=arm_legend[i])
-        ax_rew.set_title("Rewards")
-        ax_rew.set_xlabel("Generations")
-        ax_rew.set_ylabel("Cumulative Reward")
-        ax_rew.legend(loc="upper left")
-        ax_rew.grid()
+        fig, (ax_rew_avg, ax_rew_cum) = plt.subplots(1,2, figsize=(10,6), constrained_layout=True)
+        # ax_arm = fig.add_subplot(121)
+        # ax_rew = fig.add_subplot(122)
+        for i, (r,count) in enumerate(zip(rewards, counts)):
+            ax_rew_avg.plot([rp/(rp+rn or 1) for (rp,rn) in r], label=arm_legend[i])
+            ax_rew_cum.plot([rp/(rp+rn or 1) * c for (rp,rn),c in zip(r,count)], label=arm_legend[i])
 
-    for i,a in enumerate(arms):
-        ax_arm.plot(a, label=arm_legend[i])
-    add = " (mean)" if bdt == 5 or bdt == 6 else ""
-    ax_arm.set_title(f"Arm Values{add}")
-    ax_arm.set_xlabel("Generations")
-    ax_arm.set_ylabel("Arm Value")
-    ax_arm.legend(loc="upper left")
-    ax_arm.grid()
+        ax_rew_avg.set_title(f"Average Reward")
+        ax_rew_avg.set_xlabel("Generations")
+        ax_rew_avg.set_ylabel("Reward")
+        ax_rew_avg.legend(loc="upper left")
+        ax_rew_avg.grid()
+
+        ax_rew_cum.set_title("Cumulative Reward")
+        ax_rew_cum.set_xlabel("Generations")
+        ax_rew_cum.set_ylabel("Reward")
+        ax_rew_cum.legend(loc="upper left")
+        ax_rew_cum.grid()
     
-    fig.suptitle(f"Bandit's Arms and Rewards over Generations Test:{test_names[tst]} Bandit:{labs[bdt]} Run:{run}")
+    fig.suptitle(f"Bandit's Average Reward and Cumulative Reward over Generations Test:{test_names[tst]} Bandit:{labs[bdt]} Run:{run}")
     if show:
         plt.show()
 
     fig.savefig(f"processed/test_{tst}_{bdt}/bandit_{tst}_{bdt}_{run}")
     plt.close()
-    plays_fig = plt.figure()
-    plays = plays_fig.add_subplot(111)
+    plays_fig, plays = plt.subplots()
+    # plays = plays_fig.add_subplot(111)
     plays.set_title(f"Bandit Arms Play Count Test:{test_names[tst]} Bandit:{labs[bdt]} Run:{run}")
     for i,c in enumerate(counts):
         plays.plot(c, label=arm_legend[i])
     plays.legend()
     plays.set_xlabel("Generations")
     plays.set_ylabel("Play Count")
+    plays.grid()
     if show:
         plt.show()
     plays_fig.savefig(f"processed/test_{tst}_{bdt}/banditcount_{tst}_{bdt}_{run}")
@@ -419,7 +434,7 @@ def view_top_n_networks(tst, bdt, run, n):
         file_prefix = f"processed/test_{tst}_{bdt}/net_{tst}_{bdt}_{run}_"
         filename = file_prefix + ("winner" if i == 0 else f"{i}")
         # print(filename)
-        visualize.draw_net(config, net, view=False, filename=filename, show_disabled=True, fmt='png')
+        visualize.draw_net(config, net, view=False, filename=filename, show_disabled=False, fmt='png')
         os.remove(filename)
 
 def view_all_test_networks():

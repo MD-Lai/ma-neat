@@ -61,7 +61,7 @@ for tst in range(test):
 # Run the job from the directory where it was launched (default)\n\
 \n\
 module load Python/3.7.1-GCC-6.2.0\n\
-python main_mp.py {tst} {ban} {cpu} {sta}\n\
+python main_mp2.py {tst} {ban} {cpu} {sta}\n\
 mkdir /data/cephfs/punim1244/maneat/test_{tst}_{ban}\n\
 mv results_{tst}_{ban}* /data/cephfs/punim1244/maneat/test_{tst}_{ban}\n'
 
