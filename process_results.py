@@ -7,6 +7,10 @@ import graphviz
 import matplotlib.pyplot as plt
 import numpy as np
 
+bandit_names = ["Base", "N-Soft", "H-Soft", "N-Eps", "H-Eps", "N-TS", "H-TS"]
+test_names = ["Pendulum_v0","BipedalWalker_v3","BipedalWalkerHardcore_v3","LunarLanderContinuous_v2","Banknote_Auth","Wine_Quality","MNIST"]
+
+
 def get_gens(tst,bdt,ind, cut=0.1, window=5):
     pickle_file = f"spartan/test_{tst}_{bdt}/results_{tst}_{bdt}_{ind}.pickle"
 
@@ -74,8 +78,8 @@ def plot_fitness(tst,bdt,ind, figsize=None, save=True, show=False):
     # fits.plot(generation, median_fitness, 'g-', label="median")
     fits.plot(generation, avg_fitness, 'b-', label="average")
     
-    tst_names=["Pendulum_v0","BipedalWalker_v3","BipedalWalkerHardcore_v3","LunarLanderContinuous_v2","Banknote_Auth","Wine_Quality","MNIST"]
-    bdt_names=["Base","N-Prob","H-Prob","N-Eps","H-Eps","N-TS","H-TS"]
+    tst_names=test_names#["Pendulum_v0","BipedalWalker_v3","BipedalWalkerHardcore_v3","LunarLanderContinuous_v2","Banknote_Auth","Wine_Quality","MNIST"]
+    bdt_names=bandit_names#["Base","N-Prob","H-Prob","N-Eps","H-Eps","N-TS","H-TS"]
 
     fits.set_title(f"Fitness Test:{tst_names[tst]} Bandit:{bdt_names[bdt]} Run:{ind}")
     fits.set_xlabel("Generations")
@@ -100,6 +104,29 @@ def plot_fitness(tst,bdt,ind, figsize=None, save=True, show=False):
     if show:
         plt.show()
     plt.close('all')
+
+def plot_fitness_from_list(generation, best_fitness, avg_fitness, testname, banditname, runname, save=None, show=False):
+    fig, fits = plt.subplots()
+    fits.plot(generation, best_fitness, 'r-', label="best")
+    fits.plot(generation, avg_fitness, 'b-', label="average")
+
+    fits.set_title(f"Fitness Test:{testname} Bandit:{banditname} Run:{runname}")
+    fits.set_xlabel("Generations")
+    fits.set_ylabel("Fitness")
+    fits.grid()
+    fits.legend(loc="lower right")
+
+    if save is not None:
+        fig.savefig(save)
+    
+    if show:
+        plt.show()
+        
+    plt.close('all')
+
+def plot_species_from_stats(stats, testname, banditname, runname, save=None, show=False):
+    visualize.plot_species(stats, graph_title=f"Speciation Test:{testname} Bandit:{banditname} Run:{runname}", view=show, filename=save)
+
 def plot_and_save_fitnesses(tsts, bdts, figsize):
     # Assume all tests are just 0-31 for now
     for t in tsts:

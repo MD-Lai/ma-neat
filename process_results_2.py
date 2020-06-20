@@ -262,6 +262,100 @@ def show_p_vals(rel):
     print(dts)
     dts.to_csv("Results_mannwhitu.csv", index=False)
 
+def show_mean_gens_fit_from_data(gen_fits, bdtnames, save=None, show=False):
+    # print(list(zip(bdtnames, gen_fits)))
+    gens = []
+    fits = []
+    for gfs in gen_fits:
+        g,f = zip(*gfs)
+        gens.append(g)
+        fits.append(f)
+
+    # print(list(zip(bdtnames, gens, fits)))
+
+    # base_gens = gens[0]
+    # base_fits = fits[0]
+    
+    # try:
+    #     _,p_krusk_g = kruskal(*gens)
+    # except:
+    #     p_krusk_g = -1
+    
+    # try:
+    #     _,p_krusk_f = kruskal(*fits)
+    # except:
+    #     p_krusk_f = -1
+
+    dts = pd.DataFrame()
+    for b,g,f in zip(bdtnames,gens,fits):
+        mean_g = mean(g)
+        mean_f = mean(f)
+        err_g = [max(g)+1,min(g)+1]
+        err_f = [max(f),min(f)]
+
+        n_thresh = len([x for x in g if x < 199])
+
+        # try:
+        #     _,p_g = mannwhitneyu(base_gens, g, alternative="greater")
+        #     if p_g < 0.01:
+        #         p_gs = "<0.01"
+        #     else:
+        #         p_gs = f"{p_g:.2f}"
+        # except:
+        #     p_g = 1
+        #     p_gs = "-"
+        # try:
+        #     _,p_f = mannwhitneyu(base_fits, f, alternative="less")
+        #     if p_f < 0.01:
+        #         p_fs = "<0.01"
+        #     else:
+        #         p_fs = f"{p_f:.2f}"
+        # except:
+        #     p_f = 1
+        #     p_fs = "-"
+
+        # try:
+        #     _,p_krusk_g = kruskal(base_gens, g)
+        # except:
+        #     p_krusk_g = "-"
+        
+        # try:
+        #     _,p_krusk_f = kruskal(base_fits, f)
+        # except:
+        #     p_krusk_f = "-"
+        
+        # base <= models = H0
+        # base > models = H1
+        # sig_g = 1 if p_g <= 0.05  else 0
+        # sig_f = 1 if p_f <= 0.05  else 0  
+        # total_sig = 1 if sig_g == 1 and sig_f == 1 else 0
+
+        dt = pd.DataFrame()
+        dt["MAB"] = [b]
+        dt["Mean Generations"] = [round(mean_g)+1]
+        dt["Mean Fitness"] = [f"{mean_f:.2f}"]
+        # dt["P-value Fitness"] = [p_f if p_f != -1 else "-"] 
+        # dt["Mean Generations"] = [mean_g]
+        # dt["P-value Generations"] = [p_g if p_g != -1 else "-"] 
+        # dt["Mean Fitness"] = [mean_f]
+        # dt["P-value Fitness"] = [p_f if p_f != -1 else "-"] 
+        dt["n Threshold"] = [n_thresh]
+        # dt["Sig. Generations"] = [sig_g]
+        # dt["Sig. Fitness"] = [sig_f]
+        # dt["Total Sig."] = [total_sig]
+        dt["Range Generations"] = [err_g] 
+        dt["Range Fitness"] = [err_f]
+        # dt["P-value Krusk Gens"] = [p_krusk_g]
+        # dt["P-value Krusk Fits"] = [p_krusk_f]
+
+        dts = dts.append(dt)
+    # print(mean_g, mean_f, err_g, err_f, p_g, p_f)
+    dts.sort_values(by=['Mean Generations'], inplace=True)
+    if save is not None:
+        dts.to_csv(save, index=False)
+    if show:
+        print(dts)
+
 def show_p_vals_krusk(rel):
     offs = (250,0,0,0,0,0,8000)
     if rel:
@@ -310,7 +404,103 @@ def show_p_vals_krusk(rel):
         dts = dts.append(dt)
     print(dts)
     dts.to_csv("Results_kruskal.csv", index=False)
-    
+
+def show_pairwise_p_vals_mann_whitney_from_data(gen_fits, bdtnames, save=None, save2=None, show=False):
+    """
+    +---+---+---+---+
+    |   |aaa|bbb|ccc|
+    +---+---+---+---+
+    |aaa|---|fab|fac|
+    +---+---+---+---+
+    |bbb|gba|---|fbc|
+    +---+---+---+---+
+    |ccc|gca|gcb|----
+    +---+---+---+---+
+    """
+    dt = pd.DataFrame()
+    dominance = {}
+    for bdt in bdtnames:
+        dominance[bdt] = {"gen_better": 0 , "gen_neutral":0, "gen_worse":0, "fit_better":0,"fit_neutral":0, "fit_worse":0}
+
+    dt["names"] = bdtnames
+    n_bdt = len(bdtnames)
+    for x in range(n_bdt):
+        p = []
+        dom_curr = dominance[bdtnames[x]]
+        g_x, f_x = zip(*gen_fits[x])
+        for y in range(n_bdt):
+            g_y, f_y = zip(*gen_fits[y])
+            significance = 0 # 0 for neither, -1 for < 1 for ^ 
+            if x == y:
+                p.append("-")
+            elif x > y: # bottom triangle, generations
+                try:
+                    _, p_g = mannwhitneyu(g_x, g_y, alternative="less")
+                    if p_g > 0.05 and p_g < 0.95:
+                        point = ""
+                    else:
+                        point, significance = ("<", -1) if p_g <= 0.05 else ("^", 1)
+                    if p_g < 0.01:
+                        s_p_g = "<0.01"
+                    else:
+                        s_p_g = f"{p_g:.2f}"
+                    p.append(f"{s_p_g}{point}")
+                except:
+                    p.append("*")
+                    significance = 0
+
+                if significance == -1: # the current x is winning
+                    dominance[bdtnames[x]]["gen_better"] += 1
+                    dominance[bdtnames[y]]["gen_worse"] += 1
+                elif significance == 0:
+                    dominance[bdtnames[x]]["gen_neutral"] += 1
+                    dominance[bdtnames[y]]["gen_neutral"] += 1
+                elif significance == 1:
+                    dominance[bdtnames[x]]["gen_worse"] += 1
+                    dominance[bdtnames[y]]["gen_better"] += 1
+                    
+            else: # top triangle, fitness
+                try:
+                    _, p_f = mannwhitneyu(f_x, f_y, alternative="greater")
+                    if p_f > 0.05 and p_f < 0.95:
+                        point = ""
+                    else:
+                        point, significance = ("<", -1) if p_f <= 0.05 else ("^", 1)
+                    if p_f < 0.01:
+                        s_p_f = "<0.01"
+                    else:
+                        s_p_f = f"{p_f:.2f}"
+                    p.append(f"{s_p_f}{point}")
+                except:
+                    p.append("*")
+                    significance = 0
+
+                if significance == -1: # the current x is winning
+                    dominance[bdtnames[x]]["fit_better"] += 1
+                    dominance[bdtnames[y]]["fit_worse"] += 1
+                elif significance == 0:
+                    dominance[bdtnames[x]]["fit_neutral"] += 1
+                    dominance[bdtnames[y]]["fit_neutral"] += 1
+                elif significance == 1:
+                    dominance[bdtnames[x]]["fit_worse"] += 1
+                    dominance[bdtnames[y]]["fit_better"] += 1
+
+        dt[bdtnames[x]] = p
+        # dominance[bdtnames[x]] = dom_temp
+
+    dt = dt.T
+    dom_dt = pd.DataFrame.from_dict(dominance).T
+    dom_dt.sort_values(by=["gen_better"], ascending=False, inplace=True)
+    if save is not None:
+        dt.to_csv(save)
+    if save2 is not None:
+        dom_dt.to_csv(save2)
+    if show:
+        print(dt)
+        print(dom_dt)
+
+def show_p_vals_krusk_from_data():
+    pass
 # TODO it would be great if we can see the bandits at every generation, generate rewards, plays, arms graphs. 
 def plot_bdt(tst, bdt, run, show=False):
     winner, stats, b_stats, config = open_test(tst, bdt, run)

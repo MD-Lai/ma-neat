@@ -3,10 +3,6 @@
 # cpu = int(cpu)
 # sta = int(sta)
 
-test = 7
-band = 7
-cpu = 32
-sta = 0
 
 # tests = [
 #     env_Pendulum_v0,
@@ -19,18 +15,24 @@ sta = 0
 # ]
 
 run_times = [
-    "0-01:00:00",
+    "0-00:30:00",
     "0-06:00:00",
     "0-06:00:00",
     "1-12:00:00",
+    "0-02:00:00",
+    "0-02:00:00",
     "2-00:00:00",
-    "0-01:00:00",
-    "2-00:00:00"
+    "0-01:00:00"
 ]
 
+tests = [4]
+bandits = [7, 8, 10, 12, 14, 16]
+cpu = 32
+sta = 0
+
 print("#!/bin/bash")
-for tst in range(test):
-    for ban in range(band):
+for tst in tests:
+    for ban in bandits:
         file_name = f"ma_neat_{tst}_{ban}_{cpu}_{sta}-{sta+cpu-1}.slurm"
         contents = f'#!/bin/bash\n\
 # Partition for the job:\n\

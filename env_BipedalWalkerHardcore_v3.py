@@ -14,11 +14,12 @@ def eval_genomes(genomes, config):
         total_reward = 0
         observation = env.reset()
         for _ in range(800):
+            env.render()
             action = net.activate(observation) 
             # These are all standard sigmoid outputs = [0,1]
             # Adjust to [-1,1]
-            for i,a in enumerate(action):
-                action[i] = helper.scale(0,1,-1,1, a)
+            # for i,a in enumerate(action):
+            #     action[i] = helper.scale(0,1,-1,1, a)
             observation,reward,done,info = env.step(action)
             total_reward += reward
             if done:

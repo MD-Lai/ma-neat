@@ -32,10 +32,10 @@ def run(ban, tst, test_id, gens=200):
             import env_Pendulum_v0 as t
         elif tst == 1:
             import env_BipedalWalker_v3 as t
-        elif tst == 2:
+        elif tst == 2: # fuck this one, no use 
             import env_BipedalWalkerHardcore_v3 as t
-        elif tst == 3:
-            import env_LunarLanderContinuous_v2 as t
+        elif tst == 3: # this one takes too long and for what 
+            import env_LunarLander_v2 as t
         # Classifiers
         elif tst == 4:
             import cls_banknote as t
@@ -43,6 +43,10 @@ def run(ban, tst, test_id, gens=200):
             import cls_wine as t
         elif tst == 6:
             import cls_MNIST as t
+        elif tst == 7:
+            import env_MountainCar_v0 as t
+        elif tst == 8:
+            import env_MountainCarContinuous_v0 as t
         elif tst == -1:
             import env_test as t
         else:
@@ -71,20 +75,47 @@ def run(ban, tst, test_id, gens=200):
         #     print(f"No bandit defined for {ban}")
         #     exit()
 
-        if ban == 0:
+        # Balanced parameters
+        if ban == 0: # Connection preferred
             bandit = bandit6.Static([0.3, 0.1, 0.7, 0.5, 0.1])
-        elif ban == 1:
+        elif ban == 1: # Balanced greedy
             bandit = bandit6.N_Softmax(5, 0.05)
-        elif ban == 2:
+        elif ban == 2: # Balanced greedy
             bandit = bandit6.H_Softmax(5, 0.05)
-        elif ban == 3:
+        elif ban == 3: # Balanced greedy
             bandit = bandit6.N_Eps(5, 0.2)
-        elif ban == 4:
+        elif ban == 4: # Balanced greedy
             bandit = bandit6.H_Eps(5, 0.2)
-        elif ban == 5:
+        elif ban == 5: # No parameters req'd
             bandit = bandit6.H_TS(5)
-        elif ban == 6:
+        elif ban == 6: # No parameters req'd
             bandit = bandit6.N_TS(5)
+
+        # Exploitation
+        elif ban == 7: # Node preferred
+            bandit = bandit6.Static([0.7, 0.5, 0.3, 0.1, 0.1])
+        elif ban == 8: # Heavily Greedy
+            bandit = bandit6.N_Softmax(5, 0.01)
+        elif ban == 9:
+            bandit = bandit6.H_Softmax(5, 0.01)
+        elif ban == 10: # Heavily greedy
+            bandit = bandit6.N_Eps(5, 0.01)
+        elif ban == 11: # Heavily greedy
+            bandit = bandit6.H_Eps(5, 0.01)
+        
+
+        # Exploration
+        elif ban == 12: # Equal node and connections, crossover boosted
+            bandit = bandit6.Static([0.7, 0.3, 0.7, 0.3, 0.5])
+        elif ban == 13: # Exploration
+            bandit = bandit6.N_Softmax(5, 1)
+        elif ban == 14:
+            bandit = bandit6.H_Softmax(5, 1)
+        elif ban == 15: # Heavily greedy
+            bandit = bandit6.N_Eps(5, 0.8)
+        elif ban == 16: # Heavily greedy
+            bandit = bandit6.H_Eps(5, 0.8)
+
         else:
             print(f"No bandit defined for {ban}")
             exit()

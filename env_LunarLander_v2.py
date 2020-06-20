@@ -1,8 +1,8 @@
 import gym
 import helper
 
-env = gym.make("LunarLanderContinuous-v2")
-cfg = "cfg_LunarLanderContinuous_v2"
+env = gym.make("LunarLander-v2")
+cfg = "cfg_LunarLander_v2"
 name = "lunar"
 
 # Evaluate genomes as required for NEAT
@@ -17,11 +17,13 @@ def eval_genomes(genomes, config):
         observation = env.reset()
         
         for _ in range(1000):
-            # env.render()
-            eng_m, eng_lr = net.activate(observation)
+            env.render()
+            actions = net.activate(observation)
+            
             # eng_lr = helper.scale(0,1,-1,1, eng_lr)
-
-            observation,reward,done,info = env.step([eng_m, eng_lr])
+            a,_ = max(enumerate(actions), key=lambda i_s: i_s[1])
+            
+            observation,reward,done,info = env.step(a)
 
             total_reward += reward
 

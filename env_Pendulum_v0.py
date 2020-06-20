@@ -17,7 +17,7 @@ def eval_genomes(genomes, config):
         for _ in range(200):
             cos_th, sin_th, th_dot = observation
             th_dot = helper.scale(-8, 8, -1, 1, th_dot)
-            action = (net.activate([cos_th, sin_th, th_dot])[0]-0.5) * 4
+            action = (net.activate([cos_th, sin_th, th_dot])[0])
             observation, reward, done, info = env.step([action])
             total_reward += reward
 
