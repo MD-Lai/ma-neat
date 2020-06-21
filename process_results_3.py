@@ -379,6 +379,48 @@ def plot_fitness_scatter_from_data(gen_fits, bdt_names, testname, save=None, sho
         fig.savefig(save)
     plt.close()
 
+def plot_gen_fit_boxplot_from_data(gen_fits, bdt_names, testname, save=None, show=False):
+    gens = []
+    fits = []
+
+    for gfs in gen_fits:
+        g,f = zip(*gfs)
+        gens.append(g)
+        fits.append(f)
+
+    # min_g = min([min(gen) for gen in gens])
+    # max_g = max([max(gen) for gen in gens])
+
+
+    min_f = min([min(fit) for fit in fits])
+    max_f = max([max(fit) for fit in fits])
+
+    thresholded = [len([g for g in gen if g < 199]) for gen in gens]
+
+    fig_bp, (ax_gens, ax_fits) = plt.subplots(1,2, figsize=(10,6), constrained_layout=True)
+    ax_gens.boxplot(gens)
+    ax_gens.set_xticklabels(bdt_names, rotation=90)
+    ax_gens.set_ylabel("Generations Required")
+    ax_gens.set_ylim(-5,210) # -2.5%,5% headroom
+    for i,t in enumerate(thresholded): 
+        ax_gens.text(i+1, 204, t, horizontalalignment='center') # label at 2.5% headroom
+
+    ax_fits.boxplot(fits)
+    ax_fits.set_xticklabels(bdt_names, rotation=90)
+    ax_fits.set_ylabel("Fitness Achieved")
+    ax_fits.set_ylim(min_f - (max_f-min_f)*0.025, max_f + (max_f-min_f)*0.05)
+    for i,t in enumerate(thresholded): 
+        ax_fits.text(i+1, max_f + (max_f-min_f) * 0.02, t, horizontalalignment='center') # label at 2.5% headroom
+
+    fig_bp.suptitle(f"MAB Generations Required and Fitness Achieved Test:{testname}")
+
+    if save is not None:
+        fig_bp.savefig(save, bbox_inches="tight")
+
+    if show:
+        plt.show()
+
+
 # TODO it would be great if we can see the bandits at every generation, generate rewards, plays, arms graphs. 
 def plot_bdt(tst, bdt, run, show=False):
     make_dir(tst,bdt)

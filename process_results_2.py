@@ -262,7 +262,7 @@ def show_p_vals(rel):
     print(dts)
     dts.to_csv("Results_mannwhitu.csv", index=False)
 
-def show_mean_gens_fit_from_data(gen_fits, bdtnames, save=None, show=False):
+def show_mean_gens_fit_from_data(gen_fits, bdtnames, save=None,show=False):
     # print(list(zip(bdtnames, gen_fits)))
     gens = []
     fits = []
@@ -270,21 +270,6 @@ def show_mean_gens_fit_from_data(gen_fits, bdtnames, save=None, show=False):
         g,f = zip(*gfs)
         gens.append(g)
         fits.append(f)
-
-    # print(list(zip(bdtnames, gens, fits)))
-
-    # base_gens = gens[0]
-    # base_fits = fits[0]
-    
-    # try:
-    #     _,p_krusk_g = kruskal(*gens)
-    # except:
-    #     p_krusk_g = -1
-    
-    # try:
-    #     _,p_krusk_f = kruskal(*fits)
-    # except:
-    #     p_krusk_f = -1
 
     dts = pd.DataFrame()
     for b,g,f in zip(bdtnames,gens,fits):
@@ -295,64 +280,21 @@ def show_mean_gens_fit_from_data(gen_fits, bdtnames, save=None, show=False):
 
         n_thresh = len([x for x in g if x < 199])
 
-        # try:
-        #     _,p_g = mannwhitneyu(base_gens, g, alternative="greater")
-        #     if p_g < 0.01:
-        #         p_gs = "<0.01"
-        #     else:
-        #         p_gs = f"{p_g:.2f}"
-        # except:
-        #     p_g = 1
-        #     p_gs = "-"
-        # try:
-        #     _,p_f = mannwhitneyu(base_fits, f, alternative="less")
-        #     if p_f < 0.01:
-        #         p_fs = "<0.01"
-        #     else:
-        #         p_fs = f"{p_f:.2f}"
-        # except:
-        #     p_f = 1
-        #     p_fs = "-"
-
-        # try:
-        #     _,p_krusk_g = kruskal(base_gens, g)
-        # except:
-        #     p_krusk_g = "-"
-        
-        # try:
-        #     _,p_krusk_f = kruskal(base_fits, f)
-        # except:
-        #     p_krusk_f = "-"
-        
-        # base <= models = H0
-        # base > models = H1
-        # sig_g = 1 if p_g <= 0.05  else 0
-        # sig_f = 1 if p_f <= 0.05  else 0  
-        # total_sig = 1 if sig_g == 1 and sig_f == 1 else 0
 
         dt = pd.DataFrame()
         dt["MAB"] = [b]
         dt["Mean Generations"] = [round(mean_g)+1]
         dt["Mean Fitness"] = [f"{mean_f:.2f}"]
-        # dt["P-value Fitness"] = [p_f if p_f != -1 else "-"] 
-        # dt["Mean Generations"] = [mean_g]
-        # dt["P-value Generations"] = [p_g if p_g != -1 else "-"] 
-        # dt["Mean Fitness"] = [mean_f]
-        # dt["P-value Fitness"] = [p_f if p_f != -1 else "-"] 
         dt["n Threshold"] = [n_thresh]
-        # dt["Sig. Generations"] = [sig_g]
-        # dt["Sig. Fitness"] = [sig_f]
-        # dt["Total Sig."] = [total_sig]
         dt["Range Generations"] = [err_g] 
         dt["Range Fitness"] = [err_f]
-        # dt["P-value Krusk Gens"] = [p_krusk_g]
-        # dt["P-value Krusk Fits"] = [p_krusk_f]
 
         dts = dts.append(dt)
     # print(mean_g, mean_f, err_g, err_f, p_g, p_f)
     dts.sort_values(by=['Mean Generations'], inplace=True)
     if save is not None:
         dts.to_csv(save, index=False)
+        
     if show:
         print(dts)
 

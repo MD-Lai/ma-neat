@@ -72,6 +72,9 @@ def process_test(tst, bdts=[0,1,2,3,4,5,6], runs=32, show=False, plot_indi=False
     salt = generate_salt(5)
     gen_fit_file = f"processed/genfit_{tst}_{salt}"
     p3.plot_fitness_scatter_from_data(gen_fits, used_bdts, test_names[tst], save=gen_fit_file, show=show)
+    
+    box_file = f"processed/box_{tst}_{salt}"
+    p3.plot_gen_fit_boxplot_from_data(gen_fits, used_bdts, test_names[tst], save=box_file, show=show)
 
     means_file = f"processed/means_{tst}_{salt}.csv"
     p2.show_mean_gens_fit_from_data(gen_fits, used_bdts, save=means_file, show=show)
@@ -81,6 +84,10 @@ def process_test(tst, bdts=[0,1,2,3,4,5,6], runs=32, show=False, plot_indi=False
     p2.show_pairwise_p_vals_mann_whitney_from_data(gen_fits, used_bdts, save=pairwise_file, save2=dominance_file, show=show)
     print(salt)
 
+if __name__ == "__main__":
+    complete_tests = [0,1,4,5,7]
+    for tst in complete_tests:
+        process_test(tst, bdts=range(17))
 # process_test(0)
 # process_test(1)
 # process_test(2)
