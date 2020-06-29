@@ -116,6 +116,9 @@ def run(ban, tst, test_id, gens=200):
         elif ban == 16: # Heavily greedy
             bandit = bandit6.H_Eps(5, 0.8)
 
+        elif ban == 17: # uniform random
+            bandit = bandit6.Static([1,1,1,1,1])
+
         else:
             print(f"No bandit defined for {ban}")
             exit()

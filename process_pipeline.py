@@ -68,7 +68,6 @@ def process_test(tst, bdts=[0,1,2,3,4,5,6], runs=32, show=False, plot_indi=False
             gen_fits_bdt.append((g,f))
 
         gen_fits.append(gen_fits_bdt)
-    
     salt = generate_salt(5)
     gen_fit_file = f"processed/genfit_{tst}_{salt}"
     p3.plot_fitness_scatter_from_data(gen_fits, used_bdts, test_names[tst], save=gen_fit_file, show=show)
@@ -83,7 +82,7 @@ def process_test(tst, bdts=[0,1,2,3,4,5,6], runs=32, show=False, plot_indi=False
     dominance_file = f"processed/dominance_{tst}_{salt}.csv"
     p2.show_pairwise_p_vals_mann_whitney_from_data(gen_fits, used_bdts, save=pairwise_file, save2=dominance_file, show=show)
     print(salt)
-
+    
 if __name__ == "__main__":
     complete_tests = [0,1,4,5,7]
     for tst in complete_tests:

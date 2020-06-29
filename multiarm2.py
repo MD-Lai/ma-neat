@@ -3,6 +3,8 @@ from neat.genome import DefaultGenomeConfig
 
 import math
 from random import random, choice
+# from random import random
+# from numpy.random import choice
 from itertools import count
 from statistics import median
 
@@ -165,15 +167,19 @@ class BanditReproduction(DefaultReproduction):
             old_members = old_members[:repro_cutoff]
 
             # Randomly choose parents and produce the number of offspring allotted to the species.
+            # TODO should be choose according to fitness
             while spawn > 0:
                 spawn -= 1
 
-                parent1_id, parent1 = choice(old_members)
-                parent2_id, parent2 = choice(old_members)
+                parenta = choice(old_members)
+                parentb = choice(old_members)
+
+                parent1_id, parent1 = max(parenta, parentb, key=lambda i_p: i_p[1].fitness)
+                parent2_id, parent2 = min(parenta, parentb, key=lambda i_p: i_p[1].fitness)
+                
 
                 gid = next(self.genome_indexer)
                 child = config.genome_type(gid)
-
 
                 mutation = self.bandit.play(generation)
 
@@ -186,7 +192,7 @@ class BanditReproduction(DefaultReproduction):
                 new_population[gid] = child
                 self.ancestors[gid] = (parent1_id, parent2_id) 
 
-                self.records[-1].append((child, max(parent1.fitness, parent2.fitness), mutation))
+                self.records[-1].append((child, parent1.fitness, mutation))
         
         return new_population
 

@@ -294,7 +294,7 @@ def show_mean_gens_fit_from_data(gen_fits, bdtnames, save=None,show=False):
     dts.sort_values(by=['Mean Generations'], inplace=True)
     if save is not None:
         dts.to_csv(save, index=False)
-        
+
     if show:
         print(dts)
 
@@ -362,7 +362,7 @@ def show_pairwise_p_vals_mann_whitney_from_data(gen_fits, bdtnames, save=None, s
     dt = pd.DataFrame()
     dominance = {}
     for bdt in bdtnames:
-        dominance[bdt] = {"gen_better": 0 , "gen_neutral":0, "gen_worse":0, "fit_better":0,"fit_neutral":0, "fit_worse":0}
+        dominance[bdt] = {"gen_better": 0 , "gen_neutral":0, "gen_worse":0, "fit_better":0,"fit_neutral":0, "fit_worse":0, "sum_better":0}
 
     dt["names"] = bdtnames
     n_bdt = len(bdtnames)
@@ -394,12 +394,14 @@ def show_pairwise_p_vals_mann_whitney_from_data(gen_fits, bdtnames, save=None, s
                 if significance == -1: # the current x is winning
                     dominance[bdtnames[x]]["gen_better"] += 1
                     dominance[bdtnames[y]]["gen_worse"] += 1
+                    dominance[bdtnames[x]]["sum_better"] += 1
                 elif significance == 0:
                     dominance[bdtnames[x]]["gen_neutral"] += 1
                     dominance[bdtnames[y]]["gen_neutral"] += 1
                 elif significance == 1:
                     dominance[bdtnames[x]]["gen_worse"] += 1
                     dominance[bdtnames[y]]["gen_better"] += 1
+                    dominance[bdtnames[y]]["sum_better"] += 1
                     
             else: # top triangle, fitness
                 try:
@@ -420,19 +422,22 @@ def show_pairwise_p_vals_mann_whitney_from_data(gen_fits, bdtnames, save=None, s
                 if significance == -1: # the current x is winning
                     dominance[bdtnames[x]]["fit_better"] += 1
                     dominance[bdtnames[y]]["fit_worse"] += 1
+                    dominance[bdtnames[x]]["sum_better"] += 1
                 elif significance == 0:
                     dominance[bdtnames[x]]["fit_neutral"] += 1
                     dominance[bdtnames[y]]["fit_neutral"] += 1
                 elif significance == 1:
                     dominance[bdtnames[x]]["fit_worse"] += 1
                     dominance[bdtnames[y]]["fit_better"] += 1
+                    dominance[bdtnames[y]]["sum_better"] += 1
 
         dt[bdtnames[x]] = p
         # dominance[bdtnames[x]] = dom_temp
 
     dt = dt.T
     dom_dt = pd.DataFrame.from_dict(dominance).T
-    dom_dt.sort_values(by=["gen_better"], ascending=False, inplace=True)
+    dom_dt.sort_values(by=["sum_better"], ascending=False, inplace=True)
+    # dom_dt = dom_dt.drop("sum_better")
     if save is not None:
         dt.to_csv(save)
     if save2 is not None:

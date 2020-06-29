@@ -25,8 +25,8 @@ run_times = [
     "0-01:00:00"
 ]
 
-tests = [4]
-bandits = [7, 8, 10, 12, 14, 16]
+tests = [7,4,0,5,1]
+bandits = range(17)
 cpu = 32
 sta = 0
 
