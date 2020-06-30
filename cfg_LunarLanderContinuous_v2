@@ -78,7 +78,7 @@ weight_replace_rate = 0.1
 
 # Network intrinsic parameter options
 feed_forward       = True
-initial_connection = unconnected
+initial_connection = fs_neat
 num_hidden         = 0
 num_inputs         = 8
 num_outputs        = 2
